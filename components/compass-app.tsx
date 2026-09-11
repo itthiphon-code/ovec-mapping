@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { BulkBrowser, BulkCourse } from "./bulk-mapping";
+import { CertificateSearch, CertificateDetail } from "./certificate-mapping";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -22,6 +23,7 @@ import {
   ChevronRight,
   LogIn,
   Sparkles,
+  Award,
 } from "lucide-react";
 import { useResource, ErrorBox } from "./ui";
 import { Dashboard, CatalogView, CatalogDetail, Guide } from "./catalog-views";
@@ -35,7 +37,8 @@ import {
 import { roleLabels, type User } from "@/lib/types";
 
 const nav = [
-  { path: "/", label: "ภาพรวม", icon: LayoutDashboard },
+  { path: "/", label: "ใบรับรองเทียบวิชาอะไร", icon: Award },
+  { path: "/dashboard", label: "ภาพรวมงานรับรอง", icon: LayoutDashboard },
   { path: "/automatic", label: "ผลจับคู่ทั้งคลัง", icon: Sparkles },
   { path: "/courses", label: "รายวิชาอาชีวศึกษา", icon: BookOpen },
   { path: "/standards", label: "มาตรฐาน TPQI", icon: Layers3 },
@@ -52,10 +55,18 @@ export default function CompassApp() {
   const user = me.data?.user || null;
   const parts = pathname.split("/").filter(Boolean);
   const current =
+    (parts[0] === "certificates" ? "ใบรับรองเทียบวิชาอะไร" : null) ||
     nav.find((n) => n.path === `/${parts[0] || ""}`)?.label ||
     (parts[0] === "settings" ? "จัดการระบบ" : "คู่มือการใช้งาน");
   let view;
-  if (!parts.length) view = <Dashboard user={user} />;
+  if (!parts.length) view = <CertificateSearch />;
+  else if (parts[0] === "certificates")
+    view = parts[1] ? (
+      <CertificateDetail key={parts[1]} id={decodeURIComponent(parts[1])} />
+    ) : (
+      <CertificateSearch />
+    );
+  else if (parts[0] === "dashboard") view = <Dashboard user={user} />;
   else if (parts[0] === "automatic")
     view =
       parts[1] === "new" ? (

@@ -237,11 +237,14 @@ export function DocumentsView({ user }: { user: User | null }) {
 }
 
 export function ApplicationsView({ user }: { user: User | null }) {
+  const searchParams = useSearchParams();
+  const suggestedCourse = (searchParams.get("course") || "").slice(0, 40);
+  const suggestedNote = (searchParams.get("note") || "").slice(0, 5000);
   const resource = useResource<{ items: Application[] }>(
       user ? "applications" : null,
     ),
     docs = useResource<{ items: DocumentRecord[] }>(user ? "documents" : null);
-  const [open, setOpen] = useState(false),
+  const [open, setOpen] = useState(!!suggestedCourse),
     [selected, setSelected] = useState<Application | null>(null),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -409,6 +412,7 @@ export function ApplicationsView({ user }: { user: User | null }) {
               รหัสรายวิชาที่ขอเทียบโอน
               <input
                 name="courseCode"
+                defaultValue={suggestedCourse}
                 required
                 placeholder="เช่น 20100-1001"
                 maxLength={40}
@@ -431,7 +435,12 @@ export function ApplicationsView({ user }: { user: User | null }) {
             </label>
             <label>
               รายละเอียดเพิ่มเติม
-              <textarea name="note" rows={3} maxLength={5000} />
+              <textarea
+                name="note"
+                rows={3}
+                maxLength={5000}
+                defaultValue={suggestedNote}
+              />
             </label>
             <button className="button primary full-width" disabled={busy}>
               {busy ? "กำลังส่ง…" : "ยื่นคำร้อง"}

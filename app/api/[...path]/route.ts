@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { handleBulk } from "@/lib/bulk-api";
+import { handleCertificates } from "@/lib/certificate-api";
 import {
   EMBEDDING,
   buildEmbeddingPlan,
@@ -227,6 +228,8 @@ async function handle(
     const method = request.method;
     if (method !== "GET") checkOrigin(request);
     if (resource === "bulk") return await handleBulk(request, user, id, action);
+    if (resource === "certificates")
+      return await handleCertificates(request, id, action);
     if (resource === "health")
       return json({ ok: true, service: "TPQI Mapping", storage: "connected" });
     if (resource === "me")

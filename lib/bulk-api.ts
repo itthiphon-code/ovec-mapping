@@ -27,13 +27,13 @@ const response = (value: unknown, status = 200) =>
       "X-Content-Type-Options": "nosniff",
     },
   });
-async function artifact<T>(
+export async function artifact<T>(
   request: Request,
   path: string,
   expectedHash: string,
 ): Promise<T> {
   if (
-    !/^\/bulk\/[a-z0-9-]+\/(courses|standards)\/[a-zA-Z0-9_-]+\.json$/.test(
+    !/^\/(?:bulk\/[a-z0-9-]+\/(courses|standards)|certificates\/[a-z0-9-]+)\/[a-zA-Z0-9_-]+\.json$/.test(
       path,
     )
   )
