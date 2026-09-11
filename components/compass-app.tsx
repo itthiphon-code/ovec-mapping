@@ -119,7 +119,7 @@ export default function CompassApp() {
             <Compass size={29} strokeWidth={1.6} />
           </span>
           <span>
-            COMPASS<small>Competency Mapping</small>
+            OVEC Mapping<small>TPQI × อาชีวศึกษา</small>
           </span>
         </Link>
         <div className="workspace-label">
@@ -229,7 +229,7 @@ export default function CompassApp() {
           {view}
         </main>
         <footer className="app-footer">
-          <span>COMPASS · เชื่อมมาตรฐาน สู่การเรียนรู้</span>
+          <span>OVEC Mapping · เชื่อมมาตรฐาน สู่การเรียนรู้</span>
           <span>
             <ShieldCheck size={14} /> อ้างอิงเอกสาร · ตรวจสอบย้อนกลับ ·
             ผู้เชี่ยวชาญรับรอง

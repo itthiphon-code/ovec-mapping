@@ -195,9 +195,9 @@ textarea:disabled {
   align-items: center;
   padding: 0 5px;
   color: #18344a;
-  font-size: 22px;
+  font-size: 18px;
   font-weight: 800;
-  letter-spacing: 0.5px;
+  letter-spacing: 0;
 }
 .brand-icon {
   width: 43px;
@@ -2576,7 +2576,7 @@ tr:last-child td {
     display: none;
   }
   .brand {
-    font-size: 21px;
+    font-size: 18px;
   }
   .dashboard-columns {
     gap: 16px;

@@ -1,4 +1,4 @@
-# สถานะการพัฒนา COMPASS 0.2
+# สถานะการพัฒนา OVEC Mapping 0.2
 
 วันที่ 11 กันยายน 2569 — รุ่นสำหรับทดลองใช้งานและตรวจรับร่วมกับผู้เชี่ยวชาญ
 
@@ -55,4 +55,4 @@ Sites ยืนยันตัวตนและส่ง `oai-authenticated-use
 
 ## ภาพประกอบ
 
-ภาพ social cover `public/og.png` สร้างด้วย imagegen ใช้หนังสือ 3D โทน teal/blue กับข้อความ COMPASS / เชื่อมสมรรถนะ สู่โอกาสใหม่ / TPQI × อาชีวศึกษา ภาพบนหน้า dashboard ใช้ CSS เพื่อคมชัดและรองรับ reduced motion
+ภาพ social cover `public/og.png` สร้างด้วย imagegen ใช้หนังสือ 3D โทน teal/blue กับข้อความ OVEC Mapping / เชื่อมสมรรถนะ สู่โอกาสใหม่ / TPQI × อาชีวศึกษา ภาพบนหน้า dashboard ใช้ CSS เพื่อคมชัดและรองรับ reduced motion

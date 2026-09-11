@@ -164,7 +164,7 @@ export async function handleBulk(
         headers: {
           "Content-Type": "text/csv; charset=utf-8",
           "Content-Disposition":
-            'attachment; filename="compass-bulk-results.csv"',
+            'attachment; filename="ovec-mapping-bulk-results.csv"',
           "Cache-Control": "no-store",
           "X-Content-Type-Options": "nosniff",
         },

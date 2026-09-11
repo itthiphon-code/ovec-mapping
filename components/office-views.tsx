@@ -1048,7 +1048,7 @@ export function ReportsView() {
         >
           <header className="report-header">
             <div className="report-brand">
-              COMPASS<small>TPQI × อาชีวศึกษา</small>
+              OVEC Mapping<small>TPQI × อาชีวศึกษา</small>
             </div>
             <div>
               <h1>

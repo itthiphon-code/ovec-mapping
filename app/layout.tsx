@@ -6,17 +6,22 @@ export async function generateMetadata(): Promise<Metadata> {
   const host = h.get("x-forwarded-host") || h.get("host") || "localhost:3000";
   const base = `${host.includes("localhost") ? "http" : "https"}://${host}`;
   return {
-    title: "COMPASS | ใบรับรอง TPQI เทียบวิชาอะไรได้บ้าง",
+    title: "OVEC Mapping | ใบรับรอง TPQI เทียบวิชาอะไรได้บ้าง",
     description:
       "ค้นรายวิชาที่เสนอให้พิจารณาเทียบโอนจากใบรับรองมาตรฐาน TPQI ที่สอบผ่าน พร้อมหลักฐานและการตรวจรับรองโดยผู้เชี่ยวชาญ",
     metadataBase: new URL(base),
     openGraph: {
-      title: "COMPASS · เชื่อมสมรรถนะ สู่โอกาสใหม่",
+      title: "OVEC Mapping · เชื่อมสมรรถนะ สู่โอกาสใหม่",
       description: "ระบบเทียบเคียง TPQI กับรายวิชาอาชีวศึกษา",
       type: "website",
-      images: [{ url: `${base}/og.png`, width: 1536, height: 1024 }],
+      images: [
+        { url: `${base}/og.png?v=ovec-mapping`, width: 1536, height: 1024 },
+      ],
     },
-    twitter: { card: "summary_large_image", images: [`${base}/og.png`] },
+    twitter: {
+      card: "summary_large_image",
+      images: [`${base}/og.png?v=ovec-mapping`],
+    },
     robots: { index: false, follow: false },
   };
 }
