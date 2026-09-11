@@ -13,8 +13,8 @@ const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 const registry = JSON.parse(
   await readFile("lib/certificate-registry.json", "utf8"),
 );
-const rawIndex = gunzipSync(await readFile("public" + registry.path)).toString(
-  "utf8",
+const rawIndex = new TextDecoder().decode(
+  gunzipSync(await readFile("public" + registry.path)),
 );
 assert.equal(hash(rawIndex), registry.hash);
 const index = JSON.parse(rawIndex) as CertificateIndex;
@@ -24,7 +24,9 @@ let pairs = 0,
   levels = 0,
   largest = 0;
 for (const item of index.items) {
-  const raw = gunzipSync(await readFile("public" + item.path)).toString("utf8");
+  const raw = new TextDecoder().decode(
+    gunzipSync(await readFile("public" + item.path)),
+  );
   largest = Math.max(largest, Buffer.byteLength(raw));
   assert.equal(hash(raw), item.hash);
   const file = JSON.parse(raw) as CertificateFile;
