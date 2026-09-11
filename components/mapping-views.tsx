@@ -284,7 +284,13 @@ function CatalogPicker({
     </section>
   );
 }
-export function NewMapping({ user }: { user: User | null }) {
+export function NewMapping({
+  user,
+  automatic = false,
+}: {
+  user: User | null;
+  automatic?: boolean;
+}) {
   const params = useSearchParams(),
     router = useRouter();
   const [courseId, setCourseId] = useState(params.get("course") || ""),
@@ -306,7 +312,7 @@ export function NewMapping({ user }: { user: User | null }) {
         method: "POST",
         body: JSON.stringify({ courseId, standardId, levelName: level }),
       });
-      router.push(`/mappings/${r.id}`);
+      router.push(`/mappings/${r.id}${automatic ? "?tab=automatic" : ""}`);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -321,8 +327,12 @@ export function NewMapping({ user }: { user: User | null }) {
       </Link>
       <PageTitle
         eyebrow="NEW MAPPING"
-        title="สร้างตารางเทียบสมรรถนะ"
-        description="เลือกรายวิชาและมาตรฐานที่ถูกต้อง ก่อนเริ่มเชื่อมหลักฐานรายข้อ"
+        title={
+          automatic
+            ? "เปรียบเทียบความสอดคล้องอัตโนมัติ"
+            : "สร้างตารางเทียบสมรรถนะ"
+        }
+        description="เลือกรายวิชา → ค้นคู่จากเอกสาร → เลือกมาตรฐานและระดับ → วิเคราะห์รายข้อ"
       />
       <div className="stepper">
         <span className="current">
@@ -346,6 +356,27 @@ export function NewMapping({ user }: { user: User | null }) {
           คุณสำรวจข้อมูลได้ทันที · เข้าสู่ระบบก่อนบันทึกตารางเทียบ
         </div>
       )}
+      <StandardRecommendations
+        key={courseId}
+        courseId={courseId}
+        canRun={!!user && ["admin", "editor"].includes(user.role)}
+        blockedReason={
+          !user
+            ? "เข้าสู่ระบบด้วยบัญชีที่ได้รับสิทธิ์ เพื่อค้นและบันทึกผลอัตโนมัติ"
+            : !["admin", "editor"].includes(user.role)
+              ? "บัญชีนี้ยังไม่มีสิทธิ์ผู้จัดทำตาราง กรุณาติดต่อผู้ดูแลระบบ"
+              : undefined
+        }
+        signInHref={
+          !user
+            ? `/signin-with-chatgpt?return_to=${encodeURIComponent((automatic ? "/automatic" : "/mappings/new") + (courseId ? `?course=${encodeURIComponent(courseId)}` : ""))}`
+            : undefined
+        }
+        onSelect={(id, level) => {
+          setStandardId(id);
+          setLevel(level);
+        }}
+      />
       <div className="two-columns">
         <CatalogPicker kind="course" value={courseId} onChange={setCourseId} />
         <CatalogPicker
@@ -358,16 +389,6 @@ export function NewMapping({ user }: { user: User | null }) {
         />
       </div>
       <ErrorBox message={course.error || standard.error || error} />
-      {courseId && user && ["admin", "editor"].includes(user.role) && (
-        <StandardRecommendations
-          key={courseId}
-          courseId={courseId}
-          onSelect={(id, level) => {
-            setStandardId(id);
-            setLevel(level);
-          }}
-        />
-      )}
       {course.data && (
         <section className="panel reference-panel">
           <h3>
@@ -407,10 +428,21 @@ export function NewMapping({ user }: { user: User | null }) {
           </select>
           <button
             className="button primary"
-            disabled={!course.data || !standard.data || !level || busy}
+            disabled={
+              !user ||
+              !["admin", "editor"].includes(user.role) ||
+              !course.data ||
+              !standard.data ||
+              !level ||
+              busy
+            }
             onClick={create}
           >
-            {busy ? "กำลังสร้าง…" : "สร้างฉบับร่าง"}
+            {busy
+              ? "กำลังสร้าง…"
+              : automatic
+                ? "สร้างตารางและไปวิเคราะห์"
+                : "สร้างฉบับร่าง"}
             <ArrowRight size={17} />
           </button>
         </div>
@@ -430,13 +462,16 @@ type MappingResponse = {
   }[];
 };
 export function MappingEditor({ id, user }: { id: string; user: User | null }) {
+  const params = useSearchParams();
   const resource = useResource<MappingResponse>(`mappings/${id}`),
     members = useResource<{ items: User[] }>(
       user && !["learner", "viewer"].includes(user.role) ? "members" : null,
     );
   const [payload, setPayload] = useState<MappingPayload | null>(null),
     [active, setActive] = useState(0),
-    [tab, setTab] = useState("table"),
+    [tab, setTab] = useState(
+      params.get("tab") === "automatic" ? "automatic" : "table",
+    ),
     [dirty, setDirty] = useState(false),
     [error, setError] = useState(""),
     [success, setSuccess] = useState(""),

@@ -20,8 +20,9 @@ import {
   CircleHelp,
   ChevronRight,
   LogIn,
+  Sparkles,
 } from "lucide-react";
-import { useResource } from "./ui";
+import { useResource, ErrorBox } from "./ui";
 import { Dashboard, CatalogView, CatalogDetail, Guide } from "./catalog-views";
 import { MappingsView, NewMapping, MappingEditor } from "./mapping-views";
 import {
@@ -34,6 +35,7 @@ import { roleLabels, type User } from "@/lib/types";
 
 const nav = [
   { path: "/", label: "ภาพรวม", icon: LayoutDashboard },
+  { path: "/automatic", label: "วิเคราะห์อัตโนมัติ", icon: Sparkles },
   { path: "/courses", label: "รายวิชาอาชีวศึกษา", icon: BookOpen },
   { path: "/standards", label: "มาตรฐาน TPQI", icon: Layers3 },
   { path: "/mappings", label: "ตารางเทียบสมรรถนะ", icon: GitCompareArrows },
@@ -53,6 +55,8 @@ export default function CompassApp() {
     (parts[0] === "settings" ? "จัดการระบบ" : "คู่มือการใช้งาน");
   let view;
   if (!parts.length) view = <Dashboard user={user} />;
+  else if (parts[0] === "automatic")
+    view = <NewMapping key="automatic" user={user} automatic />;
   else if (parts[0] === "courses" || parts[0] === "standards")
     view = parts[1] ? (
       <CatalogDetail id={decodeURIComponent(parts.slice(1).join("/"))} />
@@ -97,7 +101,7 @@ export default function CompassApp() {
         </Link>
         <div className="workspace-label">
           <span className="workspace-dot" /> TPQI × อาชีวศึกษา{" "}
-          <span className="version-pill">v1.0</span>
+          <span className="version-pill">ทดลองใช้</span>
         </div>
         <span className="nav-caption">พื้นที่ทำงาน</span>
         <nav aria-label="เมนูหลัก">
@@ -191,6 +195,14 @@ export default function CompassApp() {
           </div>
         </header>
         <main id="main-content" className="main-content">
+          {me.error && (
+            <>
+              <ErrorBox message={`ตรวจสิทธิ์การใช้งานไม่สำเร็จ: ${me.error}`} />
+              <button className="button secondary" onClick={me.reload}>
+                ตรวจสิทธิ์อีกครั้ง
+              </button>
+            </>
+          )}
           {view}
         </main>
         <footer className="app-footer">

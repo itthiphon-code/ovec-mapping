@@ -26,9 +26,15 @@ import type { RecommendationResult } from "@/lib/recommendations";
 export function StandardRecommendations({
   courseId,
   onSelect,
+  canRun = true,
+  blockedReason,
+  signInHref,
 }: {
   courseId: string;
   onSelect: (id: string, level: string) => void;
+  canRun?: boolean;
+  blockedReason?: string;
+  signInHref?: string;
 }) {
   const [data, setData] = useState<RecommendationResult | null>(null),
     [busy, setBusy] = useState(false),
@@ -62,13 +68,30 @@ export function StandardRecommendations({
         </div>
         <button
           className="button primary"
-          disabled={busy || !courseId}
+          disabled={busy || !courseId || !canRun}
           onClick={search}
         >
           <Sparkles size={18} />
           {busy ? "กำลังตรวจแหล่งข้อมูล…" : "ค้นจากอ้างอิงรายวิชา"}
         </button>
       </div>
+      {blockedReason && (
+        <div className="notice info">
+          <FileText size={20} />
+          <span>{blockedReason}</span>
+          {signInHref && (
+            <a className="button secondary small" href={signInHref}>
+              เข้าสู่ระบบ
+            </a>
+          )}
+        </div>
+      )}
+      {!blockedReason && !courseId && (
+        <p className="field-hint">
+          ขั้นที่ 1: ค้นหาและคลิกเลือกรายวิชาจากรายการด้านล่าง
+          แล้วปุ่มค้นอัตโนมัติจะพร้อมใช้
+        </p>
+      )}
       <ErrorBox message={error} />
       {busy && <Loading />}
       {data && (
@@ -85,6 +108,16 @@ export function StandardRecommendations({
               ต้นทางบางส่วนไม่พร้อม จึงใช้ข้อมูลที่เก็บไว้ ผลค้นหาอาจไม่ครบ
             </div>
           )}
+          {data.items.length > 0 &&
+            data.items.every((item) =>
+              item.levels.every((level) => level.mismatch),
+            ) && (
+              <div className="notice warning">
+                พบชื่อมาตรฐานที่เกี่ยวข้อง
+                แต่ระดับของรายการที่ค้นพบยังไม่ตรงกับเอกสารรายวิชา
+                จึงปิดปุ่มเลือกระดับไว้ กรุณาค้นมาตรฐานฉบับที่ตรงระดับเพิ่มเติม
+              </div>
+            )}
           {data.detailsUnavailable > 0 && (
             <p className="field-hint">
               อ่านรายละเอียดไม่สำเร็จ {data.detailsUnavailable} รายการ

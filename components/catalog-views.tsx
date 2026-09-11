@@ -83,9 +83,9 @@ export function Dashboard({ user }: { user: User | null }) {
             และการรับรองจากผู้เชี่ยวชาญ
           </p>
           <div className="hero-actions">
-            <Link className="button primary" href="/mappings/new">
-              <Plus size={18} />
-              เริ่มสร้างตารางเทียบ
+            <Link className="button primary" href="/automatic">
+              <Sparkles size={18} />
+              เริ่มวิเคราะห์อัตโนมัติ
               <ArrowRight size={18} />
             </Link>
             <Link className="button white" href="/guide">
@@ -671,6 +671,28 @@ export function Guide() {
         title="เริ่มต้นอย่างมั่นใจ"
         description="จากเอกสารต้นฉบับ สู่ตารางเทียบที่ตรวจสอบย้อนกลับได้"
       />
+      <section className="panel text-section">
+        <h2>ใช้การเปรียบเทียบอัตโนมัติ</h2>
+        <ol>
+          <li>
+            เข้าสู่ระบบด้วยบัญชีที่ได้รับสิทธิ์ แล้วเปิดเมนู{" "}
+            <Link href="/automatic">วิเคราะห์อัตโนมัติ</Link>
+          </li>
+          <li>ค้นรายวิชา แล้วคลิกชื่อรายวิชาในผลค้นหา</li>
+          <li>
+            กด “ค้นจากอ้างอิงรายวิชา” และเลือกมาตรฐานกับระดับที่เอกสารระบุ
+          </li>
+          <li>กด “สร้างตารางและไปวิเคราะห์” แล้วกด “วิเคราะห์ฉบับที่บันทึก”</li>
+          <li>
+            อ่านผล เลือกหลักฐานที่ต้องการ
+            และบันทึกเป็นฉบับร่างเพื่อให้ผู้เชี่ยวชาญตรวจ
+          </li>
+        </ol>
+        <p>
+          ถ้าปุ่มยังใช้ไม่ได้ ให้ดูข้อความใต้ส่วนค้นอัตโนมัติ
+          ระบบจะแจ้งว่าต้องเข้าสู่ระบบ เลือกรายวิชา หรือขอสิทธิ์ผู้จัดทำก่อน
+        </p>
+      </section>
       <div className="guide-grid">
         {[
           {
