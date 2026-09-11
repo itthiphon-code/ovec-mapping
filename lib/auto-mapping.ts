@@ -118,7 +118,9 @@ export type AutoCandidate = {
   standardQuote: string;
   standardLocator: string;
   standardUrl: string;
-  basis: "DIRECT_CODE" | "TEXT";
+  basis: "DIRECT_CODE" | "TEXT" | "EMBEDDING";
+  similarity?: number;
+  cosine?: number;
   sharedTerms: string[];
   rankScore: number;
   reason: string;
@@ -129,10 +131,12 @@ export type AutoCandidate = {
     quote: string;
     locator: string;
     sharedTerms: string[];
+    similarity?: number;
   }[];
 };
 export type AutoResult = {
   engine: string;
+  embedding?: import("./embedding-matcher").EmbeddingMetadata;
   courseTitle: string;
   standardTitle: string;
   levelName: string;

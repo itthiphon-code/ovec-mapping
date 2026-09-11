@@ -12,3 +12,5 @@ dist/
 *.tsbuildinfo
 docs/evidence/**/*.pdf
 .vinext/
+
+public/embedding-runtime/

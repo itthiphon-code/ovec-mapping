@@ -1,4 +1,11 @@
 import { z } from "zod";
+import {
+  EMBEDDING,
+  buildEmbeddingPlan,
+  decodeVectors,
+  matchEmbeddings,
+  bestEmbeddingSelections,
+} from "@/lib/embedding-matcher";
 import { recommendStandards } from "@/lib/recommendations";
 import {
   analyzeMapping,
@@ -99,9 +106,11 @@ const staff = [
   "approver",
   "registrar",
 ] as const;
-async function body(request: Request) {
+async function body(request: Request, limit = 1_000_000) {
+  if (Number(request.headers.get("content-length")) > limit)
+    throw new HttpError(413, "ข้อมูลมีขนาดใหญ่เกินไป");
   const text = await request.text();
-  if (text.length > 1_000_000)
+  if (new TextEncoder().encode(text).byteLength > limit)
     throw new HttpError(413, "ข้อมูลมีขนาดใหญ่เกินไป");
   try {
     return JSON.parse(text);
@@ -392,6 +401,52 @@ async function handle(
       }
       const m = await loadMapping(id, user);
       const payload = JSON.parse(m.payload) as MappingPayload;
+      if (method === "GET" && action === "embedding-evidence") {
+        requireUser(user, [...staff]);
+        const analysisId = z
+          .string()
+          .uuid()
+          .parse(url.searchParams.get("analysisId"));
+        const record = await one<AnalysisRecord>(
+          "SELECT * FROM mapping_analyses WHERE id=? AND mapping_id=?",
+          analysisId,
+          id,
+        );
+        const metadata = record
+          ? (JSON.parse(record.result) as AutoResult).embedding
+          : null;
+        if (!metadata)
+          throw new HttpError(404, "ไม่พบหลักฐาน Embedding ของงานนี้");
+        const archive = await runtime.DOCUMENTS.get(metadata.archiveKey);
+        if (!archive) throw new HttpError(404, "ไม่พบไฟล์หลักฐานการคำนวณ");
+        return new Response(archive.body, {
+          headers: {
+            "Content-Type": "application/json",
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": `attachment; filename="embedding-${analysisId}.json"`,
+          },
+        });
+      }
+      if (method === "GET" && action === "embedding-input") {
+        const actor = requireUser(user, ["admin", "editor"]);
+        if (
+          m.owner !== actor.email ||
+          !["DRAFT", "CHANGES_REQUESTED"].includes(m.status)
+        )
+          throw new HttpError(403, "วิเคราะห์ได้เฉพาะผู้จัดทำในฉบับร่าง");
+        try {
+          const plan = buildEmbeddingPlan(payload);
+          return json({
+            revision: m.revision,
+            inputHash: m.content_hash,
+            planHash: await sha(JSON.stringify(plan)),
+            plan,
+          });
+        } catch (error) {
+          throw new HttpError(422, (error as Error).message);
+        }
+      }
       if (method === "GET" && action === "analyses")
         return json({
           items: await all<AnalysisRecord>(
@@ -412,7 +467,10 @@ async function handle(
           ),
         });
       const actor = requireUser(user);
-      const input = await body(request);
+      const input = await body(
+        request,
+        action === "embedding-analyze" ? 8_000_000 : 1_000_000,
+      );
       if (method === "PATCH") {
         if (
           m.owner !== actor.email ||
@@ -511,6 +569,173 @@ async function handle(
         .parse(input);
       if (version.revision !== m.revision)
         throw new HttpError(409, "ฉบับงานเปลี่ยนแล้ว กรุณาโหลดใหม่");
+      if (method === "POST" && action === "embedding-analyze") {
+        requireUser(actor, ["admin", "editor"]);
+        if (
+          m.owner !== actor.email ||
+          !["DRAFT", "CHANGES_REQUESTED"].includes(m.status)
+        )
+          throw new HttpError(403, "วิเคราะห์ได้เฉพาะผู้จัดทำในฉบับร่าง");
+        const submission = z
+          .object({
+            inputHash: z.string().length(64),
+            planHash: z.string().length(64),
+            vectors: z
+              .array(z.string().length(2048))
+              .min(1)
+              .max(EMBEDDING.maxTexts),
+          })
+          .parse(input);
+        if (submission.inputHash !== m.content_hash)
+          throw new HttpError(409, "ข้อมูลต้นทางเปลี่ยนแล้ว กรุณาโหลดใหม่");
+        let plan, result: AutoResult;
+        try {
+          plan = buildEmbeddingPlan(payload);
+          if (submission.planHash !== (await sha(JSON.stringify(plan))))
+            throw new Error("แผนข้อความหรือรุ่นโมเดลไม่ตรง กรุณาโหลดใหม่");
+          result = matchEmbeddings(
+            payload,
+            plan,
+            decodeVectors(submission.vectors, plan.texts.length),
+          );
+        } catch (error) {
+          throw new HttpError(422, (error as Error).message);
+        }
+        const analysisId = uid(),
+          createdAt = now();
+        const selections = bestEmbeddingSelections(payload, result);
+        const next = selections.length
+          ? applyCandidates(payload, result, selections)
+          : null;
+        const nextPayload = next ? JSON.stringify(next) : m.payload;
+        const nextHash = next ? await sha(nextPayload) : m.content_hash;
+        const nextRevision = next ? m.revision + 1 : m.revision;
+        const archiveKey = `embedding/${id}/${analysisId}.json`;
+        const archive = JSON.stringify({
+          plan,
+          vectors: submission.vectors,
+          encoding: "float32-little-endian-base64",
+          inputHash: m.content_hash,
+          revision: m.revision,
+        });
+        const bestScores = result.rows.flatMap((r) =>
+          r.candidates[0]?.similarity === undefined
+            ? []
+            : [r.candidates[0].similarity],
+        );
+        result.embedding = {
+          config: EMBEDDING,
+          planHash: submission.planHash,
+          vectorHash: await sha(archive),
+          archiveKey,
+          provenance: "browser-inference-server-cosine",
+          meanSimilarity: bestScores.length
+            ? Math.round(
+                (bestScores.reduce((a, b) => a + b, 0) / bestScores.length) *
+                  10,
+              ) / 10
+            : null,
+          scoredTargets: bestScores.length,
+          linkedCount: selections.length,
+          ...(next
+            ? { appliedRevision: nextRevision, appliedHash: nextHash }
+            : {}),
+        };
+        const resultJson = JSON.stringify(result);
+        if (new TextEncoder().encode(resultJson).byteLength > 1_000_000)
+          throw new HttpError(
+            422,
+            "ผลวิเคราะห์เกิน 1 MB กรุณาแบ่งขอบเขตข้อกำหนด",
+          );
+        await runtime.DOCUMENTS.put(archiveKey, archive, {
+          httpMetadata: { contentType: "application/json" },
+        });
+        try {
+          const queries = [
+            statement(
+              "INSERT INTO mapping_analyses(id,mapping_id,revision,input_hash,engine,actor,result,created_at) SELECT ?,id,revision,content_hash,?,?,?,? FROM mappings WHERE id=? AND revision=? AND content_hash=? AND status=?",
+              analysisId,
+              EMBEDDING.engine,
+              actor.email,
+              resultJson,
+              createdAt,
+              id,
+              m.revision,
+              m.content_hash,
+              m.status,
+            ),
+          ];
+          if (next) {
+            queries.push(
+              statement(
+                "UPDATE mappings SET payload=?,content_hash=?,revision=?,status='DRAFT',updated_at=? WHERE id=? AND revision=? AND content_hash=? AND status=? AND EXISTS(SELECT 1 FROM mapping_analyses WHERE id=?)",
+                nextPayload,
+                nextHash,
+                nextRevision,
+                createdAt,
+                id,
+                m.revision,
+                m.content_hash,
+                m.status,
+                analysisId,
+              ),
+            );
+            queries.push(
+              statement(
+                "INSERT INTO revisions(id,mapping_id,revision,payload,hash,actor,created_at) SELECT ?,id,revision,payload,content_hash,?,? FROM mappings WHERE id=? AND revision=? AND content_hash=? AND EXISTS(SELECT 1 FROM mapping_analyses WHERE id=?)",
+                uid(),
+                actor.email,
+                createdAt,
+                id,
+                nextRevision,
+                nextHash,
+                analysisId,
+              ),
+            );
+          }
+          queries.push(
+            statement(
+              "INSERT INTO audit(id,actor,action,entity_id,detail,created_at) SELECT ?,?,'EMBEDDING_ANALYZE_LINK',?,?,? WHERE EXISTS(SELECT 1 FROM mapping_analyses WHERE id=?)",
+              uid(),
+              actor.email,
+              id,
+              JSON.stringify({
+                analysisId,
+                engine: EMBEDDING.engine,
+                inputHash: m.content_hash,
+                planHash: submission.planHash,
+                selections,
+                revision: nextRevision,
+              }),
+              createdAt,
+              analysisId,
+            ),
+          );
+          const saved = await runtime.DB.batch(queries);
+          if (!saved[0].meta.changes)
+            throw new HttpError(
+              409,
+              "ฉบับงานเปลี่ยนระหว่างคำนวณ กรุณาโหลดใหม่",
+            );
+        } catch (error) {
+          // A transport error can hide a committed batch; retain its evidence.
+          const persisted = await one<{ id: string }>(
+            "SELECT id FROM mapping_analyses WHERE id=?",
+            analysisId,
+          ).catch(() => ({ id: analysisId }));
+          if (!persisted) await runtime.DOCUMENTS.delete(archiveKey);
+          throw error;
+        }
+        return json(
+          {
+            id: analysisId,
+            linked: selections.length,
+            revision: nextRevision,
+            mismatch: result.reference.mismatch,
+          },
+          201,
+        );
+      }
       if (action === "analyze" || action === "apply-analysis") {
         requireUser(actor, ["admin", "editor"]);
         if (

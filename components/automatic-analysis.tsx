@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { EmbeddingPlan } from "@/lib/embedding-matcher";
 import {
   Sparkles,
   ShieldCheck,
@@ -207,12 +208,27 @@ export function AutomaticAnalysis({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
+  const [progress, setProgress] = useState("");
+  const [canCancel, setCanCancel] = useState(false);
+  const workerRef = useRef<Worker | null>(null);
+  const cancelRef = useRef<(() => void) | null>(null);
+  useEffect(
+    () => () => {
+      cancelRef.current?.();
+      workerRef.current?.terminate();
+    },
+    [],
+  );
   const record =
     resource.data?.items.find((r) => r.id === selectedRun) ||
     resource.data?.items[0];
   const result = record ? (JSON.parse(record.result) as AutoResult) : null;
   const stale =
     !!record && (record.input_hash !== hash || record.revision !== revision);
+  const appliedHere =
+    !!result?.embedding?.appliedHash &&
+    result.embedding.appliedHash === hash &&
+    result.embedding.appliedRevision === revision;
   const selectable =
     editable && !dirty && !stale && !busy && !result?.reference.mismatch;
   const free = (rowId: string) =>
@@ -220,6 +236,94 @@ export function AutomaticAnalysis({
       (r) =>
         r.id === rowId && !r.criterion && r.status === "INSUFFICIENT_EVIDENCE",
     );
+  async function embedAndLink() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    setProgress("กำลังอ่านเอกสารฉบับที่บันทึก…");
+    try {
+      const input = await api<{
+        revision: number;
+        inputHash: string;
+        planHash: string;
+        plan: EmbeddingPlan;
+      }>(`mappings/${id}/embedding-input`);
+      if (input.revision !== revision || input.inputHash !== hash)
+        throw new Error("ฉบับงานเปลี่ยนแล้ว กรุณาโหลดใหม่");
+      const vectors = await new Promise<string[]>((resolve, reject) => {
+        const worker = new Worker("/embedding-worker.js", { type: "module" });
+        workerRef.current = worker;
+        setCanCancel(true);
+        let timer: ReturnType<typeof setTimeout>;
+        const finish = (error?: Error, value?: string[]) => {
+          clearTimeout(timer);
+          worker.terminate();
+          workerRef.current = null;
+          setCanCancel(false);
+          cancelRef.current = null;
+          if (error) reject(error);
+          else resolve(value!);
+        };
+        const heartbeat = () => {
+          clearTimeout(timer);
+          timer = setTimeout(
+            () =>
+              finish(
+                new Error("โมเดลไม่ตอบสนอง กรุณาตรวจเครือข่ายแล้วลองใหม่"),
+              ),
+            180_000,
+          );
+        };
+        cancelRef.current = () =>
+          finish(new Error("ยกเลิกการคำนวณแล้ว ยังไม่มีการเชื่อมโยง"));
+        worker.onerror = () =>
+          finish(
+            new Error(
+              "โหลด Embedding Matcher ไม่สำเร็จ กรุณาใช้เบราว์เซอร์รุ่นล่าสุดและลองใหม่",
+            ),
+          );
+        worker.onmessage = ({ data }) => {
+          heartbeat();
+          if (data.type === "progress") setProgress(data.message);
+          if (data.type === "complete") finish(undefined, data.vectors);
+          if (data.type === "error") finish(new Error(data.message));
+        };
+        heartbeat();
+        worker.postMessage({
+          engine: input.plan.config.engine,
+          texts: input.plan.texts,
+        });
+      });
+      setProgress("กำลังคำนวณเปอร์เซ็นต์และเชื่อมตารางร่าง…");
+      const response = await api<{
+        id: string;
+        linked: number;
+        mismatch: boolean;
+      }>(`mappings/${id}/embedding-analyze`, {
+        method: "POST",
+        body: JSON.stringify({
+          revision,
+          inputHash: input.inputHash,
+          planHash: input.planHash,
+          vectors,
+        }),
+      });
+      setSelectedRun(response.id);
+      setSelections({});
+      resource.reload();
+      setMessage(
+        response.mismatch
+          ? "คำนวณเปอร์เซ็นต์แล้ว แต่ระดับอ้างอิงไม่ตรง จึงยังไม่เชื่อมตาราง"
+          : `คำนวณเปอร์เซ็นต์แล้ว เชื่อม ${response.linked} ข้อลงตารางร่าง ทุกข้อรอผู้เชี่ยวชาญตรวจ${response.linked === 0 ? " · แถวที่มีงานเดิมจะคงไว้" : ""}`,
+      );
+      onApplied();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+      setProgress("");
+    }
+  }
   async function analyze() {
     setBusy(true);
     setError("");
@@ -279,23 +383,51 @@ export function AutomaticAnalysis({
             </p>
           </div>
           {editable && (
-            <button
-              className="button primary"
-              disabled={busy || dirty}
-              onClick={analyze}
-            >
-              <RefreshCw size={18} className={busy ? "spin" : ""} />
-              {busy ? "กำลังดำเนินการ…" : "วิเคราะห์ฉบับที่บันทึก"}
-            </button>
+            <div className="inline-actions">
+              <button
+                className="button primary"
+                disabled={busy || dirty}
+                onClick={embedAndLink}
+              >
+                <Sparkles size={18} className={busy ? "spin" : ""} />
+                {busy ? "กำลังดำเนินการ…" : "เชื่อมอัตโนมัติด้วย Embedding"}
+              </button>
+              <button
+                className="button secondary small"
+                disabled={busy || dirty}
+                onClick={analyze}
+              >
+                <RefreshCw size={16} /> วิเคราะห์ด้วยคำร่วม
+              </button>
+            </div>
           )}
         </div>
         <div className="notice info">
           <ShieldCheck size={21} />
           <span>
-            ระบบเสนอคู่จากรหัสอ้างอิงและคำร่วม ผู้จัดทำเลือกหลักฐานเพื่อนำไปตรวจ
-            ผู้เชี่ยวชาญยังเป็นผู้ยืนยันความถูกต้อง
+            Embedding Matcher เชื่อมคู่ที่ได้อันดับสูงสุดลงแถวว่าง
+            พร้อมเปอร์เซ็นต์ความใกล้เคียงของข้อความ ตรวจรหัสอ้างอิงก่อนจัดอันดับ
+            ทุกข้อรอผู้เชี่ยวชาญรับรอง
           </span>
         </div>
+        <p className="field-hint">
+          ครั้งแรกต้องดาวน์โหลดโมเดลหลายภาษา อาจใช้เวลาหลายนาที
+          จากนั้นเครื่องนี้จะเก็บโมเดลไว้ใช้ซ้ำ ข้อความประมวลผลบนเครื่องของคุณ
+        </p>
+        {progress && (
+          <div className="notice info" role="status" aria-live="polite">
+            <RefreshCw size={18} className="spin" />
+            <span>{progress}</span>
+            {canCancel && (
+              <button
+                className="button secondary small"
+                onClick={() => cancelRef.current?.()}
+              >
+                ยกเลิก
+              </button>
+            )}
+          </div>
+        )}
         {dirty && (
           <div className="notice warning">
             บันทึกฉบับร่างก่อนวิเคราะห์หรือใช้ข้อเสนอ
@@ -337,6 +469,14 @@ export function AutomaticAnalysis({
                 ))}
               </select>
             </label>
+            {result.embedding && (
+              <a
+                className="button secondary"
+                href={`/api/mappings/${id}/embedding-evidence?analysisId=${record!.id}`}
+              >
+                ดาวน์โหลดหลักฐานการคำนวณ
+              </a>
+            )}
             <button className="button secondary" onClick={() => window.print()}>
               <Printer size={17} />
               พิมพ์ผลวิเคราะห์
@@ -355,7 +495,13 @@ export function AutomaticAnalysis({
               </p>
               <Badge>ข้อเสนออัตโนมัติ ยังไม่ผ่านการรับรอง</Badge>
             </header>
-            {stale && (
+            {appliedHere && (
+              <div className="notice success">
+                เชื่อมข้อเสนอ {result.embedding!.linkedCount} ข้อแล้วในฉบับ{" "}
+                {revision} · ยังไม่ผ่านการรับรอง
+              </div>
+            )}
+            {stale && !appliedHere && (
               <div className="notice warning">
                 ผลนี้อ้างอิงฉบับเก่า ดูย้อนหลังได้ แต่ใช้กับฉบับปัจจุบันไม่ได้
               </div>
@@ -373,6 +519,27 @@ export function AutomaticAnalysis({
                 </Badge>
               ))}
             </div>
+            {result.embedding && (
+              <div className="embedding-overview">
+                <div>
+                  <span className="eyebrow">EMBEDDING SIMILARITY</span>
+                  <strong>
+                    {result.embedding.meanSimilarity?.toFixed(1) ?? "—"}
+                    <small>%</small>
+                  </strong>
+                  <span>
+                    ความใกล้เคียงข้อความเฉลี่ยของคู่ที่ได้อันดับสูงสุด
+                  </span>
+                </div>
+                <p>
+                  คำนวณจาก {result.embedding.scoredTargets}{" "}
+                  ข้อกำหนดในคู่รายวิชา–มาตรฐานนี้
+                  <br />
+                  เปอร์เซ็นต์นี้ใช้ช่วยจัดอันดับ
+                  ยังไม่ใช่ร้อยละความครอบคลุมหรือผลเทียบโอนที่รับรอง
+                </p>
+              </div>
+            )}
             <div className="analysis-counts">
               <div>
                 <strong>
@@ -397,6 +564,57 @@ export function AutomaticAnalysis({
               จำนวนคู่เสนอแสดงความคืบหน้าการค้นหลักฐาน
               ไม่ใช่ร้อยละความครอบคลุมหรือจำนวนหน่วยกิต
             </p>
+            {result.embedding && (
+              <div className="table-scroll embedding-summary-table">
+                <table>
+                  <caption>
+                    ตารางเชื่อมโยงที่ระบบเสนออันดับแรก · รอผู้เชี่ยวชาญตรวจ
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">ข้อกำหนดรายวิชา</th>
+                      <th scope="col">UoC / EoC และเกณฑ์มาตรฐาน</th>
+                      <th scope="col">ความใกล้เคียงข้อความ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.rows.map((row) => {
+                      const candidate = row.candidates[0];
+                      return (
+                        <tr key={row.rowId}>
+                          <td>
+                            <b>{row.targetKind}</b>
+                            <p>{row.target}</p>
+                          </td>
+                          <td>
+                            {candidate ? (
+                              <>
+                                <b>
+                                  {candidate.uoc} / {candidate.eoc}
+                                </b>
+                                <p>{candidate.criterion}</p>
+                              </>
+                            ) : (
+                              "ยังไม่มีคู่เสนอ"
+                            )}
+                          </td>
+                          <td>
+                            <strong>
+                              {candidate?.similarity?.toFixed(1) ?? "—"}%
+                            </strong>
+                            <p>
+                              {candidate?.basis === "DIRECT_CODE"
+                                ? "พบรหัสอ้างอิงเต็ม"
+                                : "เสนอจาก Embedding"}
+                            </p>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <div className="analysis-rows">
               {result.rows.map((row) => (
                 <section className="analysis-row" key={row.rowId}>
@@ -420,7 +638,9 @@ export function AutomaticAnalysis({
                           <Badge>
                             {c.basis === "DIRECT_CODE"
                               ? "พบรหัสอ้างอิงเต็ม"
-                              : "คำเฉพาะร่วม — รอตรวจ"}
+                              : c.basis === "EMBEDDING"
+                                ? "Embedding — รอตรวจ"
+                                : "คำเฉพาะร่วม — รอตรวจ"}
                           </Badge>
                           {editable && (
                             <label className="candidate-select print-controls">
@@ -439,6 +659,18 @@ export function AutomaticAnalysis({
                             </label>
                           )}
                         </div>
+                        {c.similarity !== undefined && (
+                          <div className="similarity-meter">
+                            <strong>{c.similarity.toFixed(1)}%</strong>
+                            <span>ความใกล้เคียงข้อความ</span>
+                            <meter
+                              min="0"
+                              max="100"
+                              value={c.similarity}
+                              aria-label={`ความใกล้เคียง ${c.similarity.toFixed(1)} เปอร์เซ็นต์`}
+                            />
+                          </div>
+                        )}
                         <h4>
                           {c.uoc} / {c.eoc}
                         </h4>
@@ -457,8 +689,10 @@ export function AutomaticAnalysis({
                                 <h4>{s.kind}</h4>
                                 <blockquote>{s.quote}</blockquote>
                                 <small>
-                                  {s.locator} · คำร่วม{" "}
-                                  {s.sharedTerms.join(", ")}
+                                  {s.locator} ·{" "}
+                                  {s.similarity !== undefined
+                                    ? `Embedding ${s.similarity.toFixed(1)}%`
+                                    : `คำร่วม ${s.sharedTerms.join(", ")}`}
                                 </small>
                               </section>
                             ))}
@@ -511,6 +745,28 @@ export function AutomaticAnalysis({
                 ))}
               </ul>
               <p>วิธีวิเคราะห์ {record!.engine}</p>
+              {result.embedding && (
+                <>
+                  <p>
+                    โมเดล {result.embedding.config.model} · รุ่น{" "}
+                    {result.embedding.config.revision} ·{" "}
+                    {result.embedding.config.dtype}
+                  </p>
+                  <p>
+                    SHA-256 หลักฐานการคำนวณ:{" "}
+                    <code>{result.embedding.vectorHash}</code>
+                  </p>
+                  <p>
+                    <a
+                      href="https://huggingface.co/intfloat/multilingual-e5-small"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      เอกสารโมเดลและข้อจำกัดของคะแนน E5
+                    </a>
+                  </p>
+                </>
+              )}
               <p>
                 ฉบับข้อมูล SHA-256: <code>{record!.input_hash}</code>
               </p>
