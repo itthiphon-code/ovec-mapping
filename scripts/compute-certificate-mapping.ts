@@ -1,6 +1,7 @@
 /** Certificate-first retrieval across every available course; reuse pinned, real E5 vectors. */
 import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { gzipSync } from "node:zlib";
 import { EMBEDDING } from "../public/embedding-config.js";
 import {
   bulkReference,
@@ -25,7 +26,7 @@ const RUN = "certificate-20260911-e5-01",
 const root = `public/bulk/${SOURCE}`,
   out = `public/certificates/${RUN}`;
 try {
-  await readFile(`${out}/index.json`);
+  await readFile(`${out}/index.json.gz`);
   throw Error("Completed certificate snapshot is immutable");
 } catch (e) {
   if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
@@ -189,8 +190,8 @@ for (const file of (await readdir(`${root}/standards`)).sort()) {
     index.pairs += results.length;
   }
   const content = JSON.stringify(artifact),
-    path = `/certificates/${RUN}/${file}`;
-  await writeFile("public" + path, content);
+    path = `/certificates/${RUN}/${file}.gz`;
+  await writeFile("public" + path, gzipSync(content, { level: 9 }));
   index.items.push({
     id: source.standard.id,
     title: source.standard.title,
@@ -209,11 +210,11 @@ for (const file of (await readdir(`${root}/standards`)).sort()) {
     );
 }
 const content = JSON.stringify(index);
-await writeFile(`${out}/index.json`, content);
+await writeFile(`${out}/index.json.gz`, gzipSync(content, { level: 9 }));
 await writeFile(
   "lib/certificate-registry.json",
   JSON.stringify(
-    { path: `/certificates/${RUN}/index.json`, hash: hash(content) },
+    { path: `/certificates/${RUN}/index.json.gz`, hash: hash(content) },
     null,
     2,
   ) + "\n",

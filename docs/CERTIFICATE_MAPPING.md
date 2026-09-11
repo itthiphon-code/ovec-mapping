@@ -21,7 +21,7 @@
 
 ## หลักฐานและการจัดเก็บ
 
-ไฟล์ใหม่อยู่ `public/certificates/certificate-20260911-e5-01/` พร้อมดัชนี hash ที่ผูกกับ `lib/certificate-registry.json` API `/api/certificates` และ `/api/certificates/:id` อ่านและตรวจ SHA-256 ผ่าน ASSETS เอกสารรายวิชาอ่านจากผลต้นทางและตรวจ hash ก่อนแสดงรายละเอียด ไม่มี schema migration หรือการเปลี่ยนผลรับรองเดิม
+ไฟล์ใหม่อยู่ `public/certificates/certificate-20260911-e5-01/` พร้อมดัชนี hash ที่ผูกกับ `lib/certificate-registry.json` ไฟล์จัดเก็บเป็น JSON gzip แบบ lossless เพื่อลดขนาดจาก 236 MB เหลือ 34 MB และตรวจ SHA-256 ของเนื้อหาหลังคลายข้อมูล (เนื้อหาหลักฐานและคะแนนเดิมทุก byte) API `/api/certificates` และ `/api/certificates/:id` อ่านและตรวจ SHA-256 ผ่าน ASSETS เอกสารรายวิชาอ่านจากผลต้นทางและตรวจ hash ก่อนแสดงรายละเอียด ไม่มี schema migration หรือการเปลี่ยนผลรับรองเดิม
 
 ไฟล์ต่อมาตรฐานเก็บสำเนามาตรฐานเดิมพร้อม provenance, รหัสระดับ, PC, target เดิม และคู่ index–cosine แยก UoC ทุก target สามารถตามกลับเอกสารต้นฉบับและผลรอบเดิมได้ คำร้องเก็บข้อมูลขอบเขตจากผู้ใช้ใน note เป็นข้อมูลรอตรวจ ไม่ถือเป็นหลักฐานที่ยืนยันแล้ว
 

@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
+import { gunzipSync } from "node:zlib";
 import assert from "node:assert/strict";
 import {
   certificateCriteria,
@@ -12,7 +13,9 @@ const hash = (s: string) => createHash("sha256").update(s).digest("hex");
 const registry = JSON.parse(
   await readFile("lib/certificate-registry.json", "utf8"),
 );
-const rawIndex = await readFile("public" + registry.path, "utf8");
+const rawIndex = gunzipSync(await readFile("public" + registry.path)).toString(
+  "utf8",
+);
 assert.equal(hash(rawIndex), registry.hash);
 const index = JSON.parse(rawIndex) as CertificateIndex;
 const cache = new Map<string, { raw: string; data: BulkDetail }>();
@@ -21,7 +24,7 @@ let pairs = 0,
   levels = 0,
   largest = 0;
 for (const item of index.items) {
-  const raw = await readFile("public" + item.path, "utf8");
+  const raw = gunzipSync(await readFile("public" + item.path)).toString("utf8");
   largest = Math.max(largest, Buffer.byteLength(raw));
   assert.equal(hash(raw), item.hash);
   const file = JSON.parse(raw) as CertificateFile;

@@ -33,7 +33,7 @@ export async function artifact<T>(
   expectedHash: string,
 ): Promise<T> {
   if (
-    !/^\/(?:bulk\/[a-z0-9-]+\/(courses|standards)|certificates\/[a-z0-9-]+)\/[a-zA-Z0-9_-]+\.json$/.test(
+    !/^\/(?:bulk\/[a-z0-9-]+\/(courses|standards)|certificates\/[a-z0-9-]+)\/[a-zA-Z0-9_-]+\.json(?:\.gz)?$/.test(
       path,
     )
   )
@@ -46,7 +46,16 @@ export async function artifact<T>(
     ? await fetch(url)
     : await runtime.ASSETS.fetch(new Request(url));
   if (!r.ok) throw new HttpError(503, "ไฟล์ผลคำนวณยังไม่พร้อม กรุณาลองใหม่");
-  const text = await r.text();
+  const bytes = await r.arrayBuffer();
+  const signature = new Uint8Array(bytes, 0, Math.min(2, bytes.byteLength));
+  const text =
+    path.endsWith(".gz") && signature[0] === 0x1f && signature[1] === 0x8b
+      ? await new Response(
+          new Response(bytes).body!.pipeThrough(
+            new DecompressionStream("gzip"),
+          ),
+        ).text()
+      : new TextDecoder().decode(bytes);
   if ((await sha(text)) !== expectedHash)
     throw new HttpError(503, "ไฟล์ผลคำนวณไม่ตรงกับฉบับที่ลงทะเบียนไว้");
   return JSON.parse(text) as T;
