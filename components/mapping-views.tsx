@@ -1,4 +1,8 @@
 "use client";
+import {
+  AutomaticAnalysis,
+  StandardRecommendations,
+} from "./automatic-analysis";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -354,6 +358,16 @@ export function NewMapping({ user }: { user: User | null }) {
         />
       </div>
       <ErrorBox message={course.error || standard.error || error} />
+      {courseId && user && ["admin", "editor"].includes(user.role) && (
+        <StandardRecommendations
+          key={courseId}
+          courseId={courseId}
+          onSelect={(id, level) => {
+            setStandardId(id);
+            setLevel(level);
+          }}
+        />
+      )}
       {course.data && (
         <section className="panel reference-panel">
           <h3>
@@ -566,6 +580,7 @@ export function MappingEditor({ id, user }: { id: string; user: User | null }) {
       <div className="tabs workspace-tabs">
         {[
           { id: "table", label: "ตารางเทียบรายข้อ" },
+          { id: "automatic", label: "วิเคราะห์อัตโนมัติ" },
           { id: "sources", label: "เอกสารและขอบเขต" },
           { id: "review", label: "ผู้เชี่ยวชาญและการรับรอง" },
           { id: "history", label: "ประวัติฉบับ" },
@@ -579,6 +594,18 @@ export function MappingEditor({ id, user }: { id: string; user: User | null }) {
           </button>
         ))}
       </div>
+      {tab === "automatic" && (
+        <AutomaticAnalysis
+          key={id}
+          id={id}
+          revision={m.revision}
+          hash={m.content_hash}
+          rows={payload.rows}
+          editable={!!editable}
+          dirty={dirty}
+          onApplied={resource.reload}
+        />
+      )}
       {tab === "table" && (
         <div className="mapping-workbench">
           <section className="panel target-list">

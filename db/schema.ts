@@ -128,3 +128,18 @@ export const syncRuns = sqliteTable("sync_runs", {
   detail: text("detail").notNull(),
   createdAt: text("created_at").notNull(),
 });
+
+export const mappingAnalyses = sqliteTable(
+  "mapping_analyses",
+  {
+    id: text("id").primaryKey(),
+    mappingId: text("mapping_id").notNull(),
+    revision: integer("revision").notNull(),
+    inputHash: text("input_hash").notNull(),
+    engine: text("engine").notNull(),
+    actor: text("actor").notNull(),
+    result: text("result").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [index("analysis_mapping").on(t.mappingId, t.createdAt)],
+);

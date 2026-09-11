@@ -1,4 +1,12 @@
 import { z } from "zod";
+import { recommendStandards } from "@/lib/recommendations";
+import {
+  analyzeMapping,
+  applyCandidates,
+  ENGINE_VERSION,
+  type AnalysisRecord,
+  type AutoResult,
+} from "@/lib/auto-mapping";
 import {
   ready,
   runtime,
@@ -138,6 +146,7 @@ async function changeMapping(
   user: User,
   nextStatus: string,
   payload?: MappingPayload,
+  auditDetail?: Record<string, unknown>,
 ) {
   const p = payload ? JSON.stringify(payload) : m.payload;
   const hash = payload ? await sha(p) : m.content_hash;
@@ -175,7 +184,13 @@ async function changeMapping(
       uid(),
       user.email,
       payload ? "MAPPING_EDIT" : `MAPPING_${nextStatus}`,
-      JSON.stringify({ from: m.status, to: nextStatus, revision: rev, hash }),
+      JSON.stringify({
+        from: m.status,
+        to: nextStatus,
+        revision: rev,
+        hash,
+        ...auditDetail,
+      }),
       date,
       m.id,
       rev,
@@ -255,6 +270,21 @@ async function handle(
           url.searchParams.get("local") === "1",
         ),
       );
+    }
+    if (resource === "recommendations" && method === "POST") {
+      const actor = requireUser(user, ["admin", "editor"]);
+      const input = z
+        .object({ courseId: z.string().max(120) })
+        .parse(await body(request));
+      const result = await recommendStandards(input.courseId);
+      await auditStatement(actor.email, "AUTO_RECOMMEND", input.courseId, {
+        queries: result.queries,
+        searched: result.searched,
+        detailsChecked: result.detailsChecked,
+        resultIds: result.items.map((i) => i.id),
+        sourceDegraded: result.sourceDegraded,
+      }).run();
+      return json(result);
     }
     if (resource === "mappings") {
       if (method === "GET" && !id) {
@@ -362,6 +392,13 @@ async function handle(
       }
       const m = await loadMapping(id, user);
       const payload = JSON.parse(m.payload) as MappingPayload;
+      if (method === "GET" && action === "analyses")
+        return json({
+          items: await all<AnalysisRecord>(
+            "SELECT * FROM mapping_analyses WHERE mapping_id=? ORDER BY created_at DESC LIMIT 10",
+            id,
+          ),
+        });
       if (method === "GET")
         return json({
           mapping: m,
@@ -474,6 +511,120 @@ async function handle(
         .parse(input);
       if (version.revision !== m.revision)
         throw new HttpError(409, "ฉบับงานเปลี่ยนแล้ว กรุณาโหลดใหม่");
+      if (action === "analyze" || action === "apply-analysis") {
+        requireUser(actor, ["admin", "editor"]);
+        if (
+          m.owner !== actor.email ||
+          !["DRAFT", "CHANGES_REQUESTED"].includes(m.status)
+        )
+          throw new HttpError(
+            403,
+            "วิเคราะห์และใช้ข้อเสนอได้เฉพาะผู้จัดทำในฉบับร่าง",
+          );
+        if (action === "analyze") {
+          const count =
+            payload.standard.levels
+              .find((l) => l.levelName === payload.levelName)
+              ?.units.reduce(
+                (n, u) =>
+                  n + u.elements.reduce((sum, e) => sum + e.pc_items.length, 0),
+                0,
+              ) || 0;
+          if (count > 3000)
+            throw new HttpError(
+              422,
+              "ระดับนี้มีเกณฑ์มากกว่า 3,000 ข้อ ต้องแบ่งขอบเขตก่อนวิเคราะห์",
+            );
+          const result = analyzeMapping(payload);
+          const resultJson = JSON.stringify(result);
+          if (new TextEncoder().encode(resultJson).byteLength > 1_000_000)
+            throw new HttpError(
+              422,
+              "ผลวิเคราะห์มีขนาดใหญ่เกิน 1 MB กรุณาแบ่งขอบเขตข้อกำหนดก่อนวิเคราะห์",
+            );
+          const analysisId = uid(),
+            createdAt = now();
+          const inserted = await runtime.DB.batch([
+            statement(
+              "INSERT INTO mapping_analyses(id,mapping_id,revision,input_hash,engine,actor,result,created_at) SELECT ?,id,revision,content_hash,?,?,?,? FROM mappings WHERE id=? AND revision=? AND content_hash=? AND status=?",
+              analysisId,
+              ENGINE_VERSION,
+              actor.email,
+              resultJson,
+              createdAt,
+              id,
+              m.revision,
+              m.content_hash,
+              m.status,
+            ),
+            statement(
+              "INSERT INTO audit(id,actor,action,entity_id,detail,created_at) SELECT ?,?,'AUTO_ANALYZE',?,?,? WHERE EXISTS(SELECT 1 FROM mapping_analyses WHERE id=?)",
+              uid(),
+              actor.email,
+              id,
+              JSON.stringify({
+                analysisId,
+                engine: ENGINE_VERSION,
+                inputHash: m.content_hash,
+                revision: m.revision,
+              }),
+              createdAt,
+              analysisId,
+            ),
+          ]);
+          if (!inserted[0].meta.changes)
+            throw new HttpError(
+              409,
+              "ฉบับงานเปลี่ยนระหว่างวิเคราะห์ กรุณาโหลดใหม่",
+            );
+          return json({ id: analysisId, result }, 201);
+        }
+        const selection = z
+          .object({
+            analysisId: z.string().uuid(),
+            selections: z
+              .array(
+                z.object({
+                  rowId: z.string().max(100),
+                  candidateId: z.string().max(100),
+                }),
+              )
+              .min(1)
+              .max(250),
+          })
+          .parse(input);
+        const analysis = await one<AnalysisRecord>(
+          "SELECT * FROM mapping_analyses WHERE id=? AND mapping_id=?",
+          selection.analysisId,
+          id,
+        );
+        if (!analysis) throw new HttpError(404, "ไม่พบผลวิเคราะห์ของงานนี้");
+        if (
+          analysis.revision !== m.revision ||
+          analysis.input_hash !== m.content_hash
+        )
+          throw new HttpError(
+            409,
+            "ผลวิเคราะห์เป็นฉบับเก่า กรุณาวิเคราะห์ฉบับล่าสุด",
+          );
+        let next: MappingPayload;
+        try {
+          next = applyCandidates(
+            payload,
+            JSON.parse(analysis.result) as AutoResult,
+            selection.selections,
+          );
+        } catch (e) {
+          throw new HttpError(422, (e as Error).message);
+        }
+        return json(
+          await changeMapping(m, actor, "DRAFT", next, {
+            analysisId: analysis.id,
+            selections: selection.selections,
+            engine: analysis.engine,
+          }),
+        );
+      }
       if (action === "submit") {
         if (
           m.owner !== actor.email ||

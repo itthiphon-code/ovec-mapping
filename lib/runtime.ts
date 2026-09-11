@@ -1,5 +1,6 @@
 import { env } from "cloudflare:workers";
 import schemaSql from "../drizzle/0000_clammy_gamma_corps.sql?raw";
+import analysisSchemaSql from "../drizzle/0001_perfect_angel.sql?raw";
 import seed from "../data/catalog-seed.json";
 import type {
   CatalogItem,
@@ -102,7 +103,8 @@ export function catalogStatement(item: CatalogItem) {
   );
 }
 async function initialize() {
-  const statements = schemaSql
+  const statements = [schemaSql, analysisSchemaSql]
+    .join("--> statement-breakpoint")
     .split("--> statement-breakpoint")
     .map((sql) => sql.trim())
     .filter(Boolean)

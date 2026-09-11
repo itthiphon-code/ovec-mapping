@@ -1,0 +1,509 @@
+"use client";
+import { useState } from "react";
+import {
+  Sparkles,
+  ShieldCheck,
+  FileText,
+  ArrowRight,
+  Printer,
+  Check,
+  RefreshCw,
+} from "lucide-react";
+import {
+  api,
+  useResource,
+  ErrorBox,
+  Loading,
+  Empty,
+  Badge,
+  ExternalLink,
+  date,
+} from "./ui";
+import type { AnalysisRecord, AutoResult } from "@/lib/auto-mapping";
+import type { MappingRow } from "@/lib/types";
+import type { RecommendationResult } from "@/lib/recommendations";
+
+export function StandardRecommendations({
+  courseId,
+  onSelect,
+}: {
+  courseId: string;
+  onSelect: (id: string, level: string) => void;
+}) {
+  const [data, setData] = useState<RecommendationResult | null>(null),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  async function search() {
+    setBusy(true);
+    setError("");
+    try {
+      setData(
+        await api<RecommendationResult>("recommendations", {
+          method: "POST",
+          body: JSON.stringify({ courseId }),
+        }),
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="panel automatic-discovery">
+      <div className="section-heading">
+        <div>
+          <h2>
+            <Sparkles size={21} /> ค้นคู่มาตรฐานอัตโนมัติ
+          </h2>
+          <p className="muted">
+            เริ่มจากอ้างอิงในเอกสารรายวิชา แล้วใช้คำร่วมช่วยค้นรายการเพิ่มเติม
+          </p>
+        </div>
+        <button
+          className="button primary"
+          disabled={busy || !courseId}
+          onClick={search}
+        >
+          <Sparkles size={18} />
+          {busy ? "กำลังตรวจแหล่งข้อมูล…" : "ค้นจากอ้างอิงรายวิชา"}
+        </button>
+      </div>
+      <ErrorBox message={error} />
+      {busy && <Loading />}
+      {data && (
+        <>
+          <div className="notice info">
+            <FileText size={20} />
+            <span>
+              ตรวจรายละเอียด {data.detailsChecked} จาก {data.searched}{" "}
+              รายการที่ค้นพบ · ยังไม่ใช่ผลรับรอง
+            </span>
+          </div>
+          {data.sourceDegraded && (
+            <div className="notice warning">
+              ต้นทางบางส่วนไม่พร้อม จึงใช้ข้อมูลที่เก็บไว้ ผลค้นหาอาจไม่ครบ
+            </div>
+          )}
+          {data.detailsUnavailable > 0 && (
+            <p className="field-hint">
+              อ่านรายละเอียดไม่สำเร็จ {data.detailsUnavailable} รายการ
+            </p>
+          )}
+          <p className="pre-line source-reference">
+            {data.reference || "รายวิชายังไม่ระบุอ้างอิง TPQI"}
+          </p>
+          <ExternalLink href={data.courseUrl}>
+            ตรวจเอกสารรายวิชา · {data.courseLocator}
+          </ExternalLink>
+          <div className="recommendation-list">
+            {data.items.map((item) => (
+              <article className="recommendation-item" key={item.id}>
+                <div>
+                  <Badge>
+                    {item.basis === "DIRECT_CODE"
+                      ? "รหัสเต็มตรง"
+                      : item.basis === "DOCUMENT_TITLE"
+                        ? "พบชื่อในเอกสาร"
+                        : item.basis === "AMBIGUOUS_CODE"
+                          ? "รหัสยังคลุมเครือ"
+                          : "พบคำร่วม"}
+                  </Badge>
+                  <h3>{item.title}</h3>
+                  <p>{item.reason}</p>
+                  <ExternalLink href={item.sourceUrl}>
+                    เปิดมาตรฐานต้นทาง
+                  </ExternalLink>
+                </div>
+                <div className="recommendation-levels">
+                  {item.levels.map((l) => (
+                    <div key={l.name}>
+                      <button
+                        className="button secondary small"
+                        disabled={l.mismatch}
+                        onClick={() => onSelect(item.id, l.name)}
+                      >
+                        {l.name}
+                        <ArrowRight size={15} />
+                      </button>
+                      <small>
+                        {l.mismatch ? l.note : "เลือกเพื่อตรวจฉบับและขอบเขต"}
+                      </small>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+          {!data.items.length && (
+            <Empty
+              title="ยังไม่พบคู่ที่มีหลักฐานพอเสนอ"
+              description="ลองค้นมาตรฐานด้วยชื่ออาชีพหรือรหัสเพิ่มเติม การไม่พบผลยังไม่หมายความว่าไม่มีมาตรฐานที่สอดคล้อง"
+            />
+          )}
+          <p className="field-hint">{data.scope}</p>
+          <small>คำค้น: {data.queries.join(" · ")}</small>
+        </>
+      )}
+    </section>
+  );
+}
+
+export function AutomaticAnalysis({
+  id,
+  revision,
+  hash,
+  rows,
+  editable,
+  dirty,
+  onApplied,
+}: {
+  id: string;
+  revision: number;
+  hash: string;
+  rows: MappingRow[];
+  editable: boolean;
+  dirty: boolean;
+  onApplied: () => void;
+}) {
+  const resource = useResource<{ items: AnalysisRecord[] }>(
+    `mappings/${id}/analyses`,
+  );
+  const [selectedRun, setSelectedRun] = useState(""),
+    [selections, setSelections] = useState<Record<string, string>>({}),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [message, setMessage] = useState("");
+  const record =
+    resource.data?.items.find((r) => r.id === selectedRun) ||
+    resource.data?.items[0];
+  const result = record ? (JSON.parse(record.result) as AutoResult) : null;
+  const stale =
+    !!record && (record.input_hash !== hash || record.revision !== revision);
+  const selectable =
+    editable && !dirty && !stale && !busy && !result?.reference.mismatch;
+  const free = (rowId: string) =>
+    rows.some(
+      (r) =>
+        r.id === rowId && !r.criterion && r.status === "INSUFFICIENT_EVIDENCE",
+    );
+  async function analyze() {
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await api<{ id: string }>(`mappings/${id}/analyze`, {
+        method: "POST",
+        body: JSON.stringify({ revision }),
+      });
+      setSelectedRun(response.id);
+      setSelections({});
+      resource.reload();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function apply() {
+    if (!record) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api(`mappings/${id}/apply-analysis`, {
+        method: "POST",
+        body: JSON.stringify({
+          revision,
+          analysisId: record.id,
+          selections: Object.entries(selections)
+            .filter(([, candidateId]) => candidateId)
+            .map(([rowId, candidateId]) => ({ rowId, candidateId })),
+        }),
+      });
+      setSelections({});
+      setMessage(
+        "บันทึกหลักฐานที่เลือกเป็นฉบับร่างใหม่แล้ว ทุกข้อยังรอการตรวจวินิจฉัย",
+      );
+      onApplied();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="automatic-analysis">
+      <div className="panel analysis-intro print-controls">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">DOCUMENT-FIRST COMPARISON</span>
+            <h2>
+              <Sparkles size={23} /> วิเคราะห์ความสอดคล้องอัตโนมัติ
+            </h2>
+            <p className="muted">
+              เทียบข้อกำหนดรายวิชากับ UoC / EoC / เกณฑ์ในระดับที่เลือก
+              พร้อมหลักฐานและจุดที่ต้องตรวจ
+            </p>
+          </div>
+          {editable && (
+            <button
+              className="button primary"
+              disabled={busy || dirty}
+              onClick={analyze}
+            >
+              <RefreshCw size={18} className={busy ? "spin" : ""} />
+              {busy ? "กำลังดำเนินการ…" : "วิเคราะห์ฉบับที่บันทึก"}
+            </button>
+          )}
+        </div>
+        <div className="notice info">
+          <ShieldCheck size={21} />
+          <span>
+            ระบบเสนอคู่จากรหัสอ้างอิงและคำร่วม ผู้จัดทำเลือกหลักฐานเพื่อนำไปตรวจ
+            ผู้เชี่ยวชาญยังเป็นผู้ยืนยันความถูกต้อง
+          </span>
+        </div>
+        {dirty && (
+          <div className="notice warning">
+            บันทึกฉบับร่างก่อนวิเคราะห์หรือใช้ข้อเสนอ
+            เพื่อให้หลักฐานตรงกับฉบับงาน
+          </div>
+        )}
+      </div>
+      <ErrorBox message={error || resource.error} />
+      {message && (
+        <div role="status" className="notice success">
+          <Check size={18} />
+          {message}
+        </div>
+      )}
+      {resource.loading && !record ? (
+        <Loading />
+      ) : !result ? (
+        <Empty
+          title="เริ่มวิเคราะห์คู่มาตรฐาน–รายวิชานี้"
+          description="ระบบจะเก็บผลวิเคราะห์แยกจากตารางที่คุณจัดทำ พร้อมแสดงข้อที่ยังหาคู่ไม่ได้"
+        />
+      ) : (
+        <>
+          <div className="analysis-toolbar print-controls">
+            <label>
+              ผลวิเคราะห์ที่บันทึก
+              <select
+                value={record!.id}
+                onChange={(e) => {
+                  setSelectedRun(e.target.value);
+                  setSelections({});
+                  setMessage("");
+                }}
+              >
+                {resource.data?.items.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    ฉบับ {r.revision} · {date(r.created_at)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="button secondary" onClick={() => window.print()}>
+              <Printer size={17} />
+              พิมพ์ผลวิเคราะห์
+            </button>
+          </div>
+          <article className="panel analysis-report">
+            <header>
+              <span className="eyebrow">
+                AUTOMATIC SUGGESTIONS · NOT CERTIFIED
+              </span>
+              <h2>ผลวิเคราะห์เบื้องต้น · ฉบับ {record!.revision}</h2>
+              <h3>{result.courseTitle}</h3>
+              <p>
+                {result.standardTitle} · {result.levelName} ·{" "}
+                {date(record!.created_at)}
+              </p>
+              <Badge>ข้อเสนออัตโนมัติ ยังไม่ผ่านการรับรอง</Badge>
+            </header>
+            {stale && (
+              <div className="notice warning">
+                ผลนี้อ้างอิงฉบับเก่า ดูย้อนหลังได้ แต่ใช้กับฉบับปัจจุบันไม่ได้
+              </div>
+            )}
+            <div
+              className={`notice ${result.reference.mismatch ? "warning" : "info"}`}
+            >
+              <FileText size={20} />
+              <span>{result.reference.note}</span>
+            </div>
+            <div className="inline-actions">
+              {result.comparedSections.map((s) => (
+                <Badge key={s.kind}>
+                  {s.kind}: {s.available ? "มีข้อมูล" : "ยังไม่มีข้อมูล"}
+                </Badge>
+              ))}
+            </div>
+            <div className="analysis-counts">
+              <div>
+                <strong>
+                  {result.summary.targetsWithCandidates} /{" "}
+                  {result.summary.targets}
+                </strong>
+                <span>ข้อกำหนดรายวิชาที่พบคู่เสนอ</span>
+              </div>
+              <div>
+                <strong>{result.summary.targetsWithoutCandidates}</strong>
+                <span>ข้อกำหนดที่ยังไม่มีคู่เสนอ</span>
+              </div>
+              <div>
+                <strong>
+                  {result.summary.criteriaWithoutCandidates} /{" "}
+                  {result.summary.criteria}
+                </strong>
+                <span>เกณฑ์ TPQI ที่ยังไม่มีคู่เสนอ</span>
+              </div>
+            </div>
+            <p className="field-hint">
+              จำนวนคู่เสนอแสดงความคืบหน้าการค้นหลักฐาน
+              ไม่ใช่ร้อยละความครอบคลุมหรือจำนวนหน่วยกิต
+            </p>
+            <div className="analysis-rows">
+              {result.rows.map((row) => (
+                <section className="analysis-row" key={row.rowId}>
+                  <div className="analysis-target">
+                    <Badge>
+                      {row.rowId} · {row.targetKind}
+                    </Badge>
+                    <h3>{row.target}</h3>
+                    <blockquote>{row.courseQuote}</blockquote>
+                    <ExternalLink href={row.courseUrl}>
+                      {row.courseLocator || "เปิดเอกสารรายวิชา"}
+                    </ExternalLink>
+                  </div>
+                  <div className="analysis-candidates">
+                    {row.candidates.map((c) => (
+                      <article
+                        className={`analysis-candidate ${selections[row.rowId] === c.id ? "chosen" : ""}`}
+                        key={c.id}
+                      >
+                        <div className="section-heading">
+                          <Badge>
+                            {c.basis === "DIRECT_CODE"
+                              ? "พบรหัสอ้างอิงเต็ม"
+                              : "คำเฉพาะร่วม — รอตรวจ"}
+                          </Badge>
+                          {editable && (
+                            <label className="candidate-select print-controls">
+                              <input
+                                type="checkbox"
+                                checked={selections[row.rowId] === c.id}
+                                disabled={!selectable || !free(row.rowId)}
+                                onChange={(e) =>
+                                  setSelections({
+                                    ...selections,
+                                    [row.rowId]: e.target.checked ? c.id : "",
+                                  })
+                                }
+                              />
+                              เลือกหลักฐานนี้
+                            </label>
+                          )}
+                        </div>
+                        <h4>
+                          {c.uoc} / {c.eoc}
+                        </h4>
+                        <blockquote>{c.standardQuote}</blockquote>
+                        <p>
+                          <b>เหตุผลที่เสนอ:</b> {c.reason}
+                        </p>
+                        {!!c.courseSupport.length && (
+                          <details className="supporting-evidence">
+                            <summary>
+                              ข้อความสนับสนุนจากหัวข้อรายวิชา (
+                              {c.courseSupport.length})
+                            </summary>
+                            {c.courseSupport.map((s) => (
+                              <section key={s.kind}>
+                                <h4>{s.kind}</h4>
+                                <blockquote>{s.quote}</blockquote>
+                                <small>
+                                  {s.locator} · คำร่วม{" "}
+                                  {s.sharedTerms.join(", ")}
+                                </small>
+                              </section>
+                            ))}
+                          </details>
+                        )}
+                        <ul>
+                          {c.gaps.map((g) => (
+                            <li key={g}>{g}</li>
+                          ))}
+                        </ul>
+                        <ExternalLink href={c.standardUrl}>
+                          {c.standardLocator}
+                        </ExternalLink>
+                      </article>
+                    ))}
+                    {!row.candidates.length && (
+                      <div className="notice warning">
+                        {row.gaps.join(" · ")}
+                      </div>
+                    )}
+                    {editable && !free(row.rowId) && (
+                      <p className="field-hint">
+                        แถวนี้มีงานที่จัดทำไว้แล้ว ระบบจะไม่เขียนทับ
+                      </p>
+                    )}
+                  </div>
+                </section>
+              ))}
+            </div>
+            {result.unmatchedCriteria.length > 0 && (
+              <details className="unmatched-criteria">
+                <summary>
+                  เกณฑ์มาตรฐานที่ยังไม่มีคู่เสนอ (
+                  {result.unmatchedCriteria.length})
+                </summary>
+                <ul>
+                  {result.unmatchedCriteria.map((c, i) => (
+                    <li key={i}>
+                      {c.uoc} / {c.eoc} · {c.criterion}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+            <footer className="analysis-footnote">
+              <h3>ขอบเขตผลวิเคราะห์</h3>
+              <ul>
+                {result.limitations.map((l) => (
+                  <li key={l}>{l}</li>
+                ))}
+              </ul>
+              <p>วิธีวิเคราะห์ {record!.engine}</p>
+              <p>
+                ฉบับข้อมูล SHA-256: <code>{record!.input_hash}</code>
+              </p>
+            </footer>
+          </article>
+          {editable && (
+            <div className="panel analysis-apply print-controls">
+              <span>
+                เลือกแล้ว{" "}
+                <b>{Object.values(selections).filter(Boolean).length}</b> ข้อ ·
+                บันทึกเป็นหลักฐานที่รอคนตรวจ
+              </span>
+              <button
+                className="button primary"
+                disabled={
+                  !selectable || !Object.values(selections).some(Boolean)
+                }
+                onClick={apply}
+              >
+                <Check size={18} />
+                ใช้ข้อเสนอที่เลือกในฉบับร่างใหม่
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
