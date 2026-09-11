@@ -143,3 +143,33 @@ export const mappingAnalyses = sqliteTable(
   },
   (t) => [index("analysis_mapping").on(t.mappingId, t.createdAt)],
 );
+
+export const bulkRuns = sqliteTable("bulk_runs", {
+  id: text("id").primaryKey(),
+  createdAt: text("created_at").notNull(),
+  manifest: text("manifest").notNull(),
+});
+export const bulkCourses = sqliteTable(
+  "bulk_courses",
+  {
+    id: text("id").primaryKey(),
+    runId: text("run_id").notNull(),
+    courseId: text("course_id").notNull(),
+    code: text("code").notNull(),
+    title: text("title").notNull(),
+    department: text("department").notNull(),
+    category: text("category").notNull(),
+    level: text("level").notNull(),
+    status: text("status").notNull(),
+    basis: text("basis").notNull(),
+    score: integer("score"),
+    standardTitle: text("standard_title").notNull(),
+    pairCount: integer("pair_count").notNull(),
+    resultPath: text("result_path").notNull(),
+    resultHash: text("result_hash").notNull(),
+  },
+  (t) => [
+    index("bulk_course_search").on(t.runId, t.status, t.level),
+    index("bulk_course_score").on(t.runId, t.score),
+  ],
+);

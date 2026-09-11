@@ -1,6 +1,6 @@
 {
   "name": "compass-tpqi-mapping",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -15,7 +15,10 @@
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint && npm test && npm run build",
     "predev": "node scripts/prepare-embedding.mjs",
-    "prebuild": "node scripts/prepare-embedding.mjs"
+    "prebuild": "node scripts/prepare-embedding.mjs",
+    "bulk:fetch": "node scripts/fetch-bulk-catalog.mjs",
+    "bulk:compute": "tsx scripts/compute-bulk-mapping.ts",
+    "bulk:verify": "node scripts/verify-bulk-artifacts.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",

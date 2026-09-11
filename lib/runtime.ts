@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import schemaSql from "../drizzle/0000_clammy_gamma_corps.sql?raw";
 import analysisSchemaSql from "../drizzle/0001_perfect_angel.sql?raw";
+import bulkSchemaSql from "../drizzle/0002_smart_mole_man.sql?raw";
 import seed from "../data/catalog-seed.json";
 import type {
   CatalogItem,
@@ -12,6 +13,7 @@ import type {
 
 export const runtime = env as unknown as {
   DB: D1Database;
+  ASSETS: Fetcher;
   DOCUMENTS: R2Bucket;
   ADMIN_EMAIL?: string;
   LOCAL_DEV_EMAIL?: string;
@@ -103,7 +105,7 @@ export function catalogStatement(item: CatalogItem) {
   );
 }
 async function initialize() {
-  const statements = [schemaSql, analysisSchemaSql]
+  const statements = [schemaSql, analysisSchemaSql, bulkSchemaSql]
     .join("--> statement-breakpoint")
     .split("--> statement-breakpoint")
     .map((sql) => sql.trim())

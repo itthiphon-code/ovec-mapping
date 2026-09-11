@@ -1,0 +1,27 @@
+{
+  "id": "bulk-20260911-e5-01",
+  "createdAt": "2026-09-11T09:40:34.602Z",
+  "engine": "catalog-embedding/1.0.0",
+  "model": "Xenova/multilingual-e5-small",
+  "modelRevision": "761b726dd34fb83930e26aab4e9ac3899aa1fa78",
+  "courses": 6900,
+  "eligible": 6288,
+  "computed": 6277,
+  "missing": 11,
+  "excluded": 612,
+  "standards": 1022,
+  "levels": 2098,
+  "criteria": 95036,
+  "pairs": 18831,
+  "direct": 10,
+  "blocked": 179,
+  "inputs": 122097,
+  "sourceIndexHash": "1cef991eba50dc58d875913ae110db46c19740b3b7c85690e6f111e4a855bf6c",
+  "vectorHash": "f382fe0e71a3d119f0a09a462e06d63f02cabc61bd77bdb3925522b3081324ee",
+  "snapshotDates": [
+    "2026-09-09",
+    "2026-09-11"
+  ],
+  "method": "Multilingual E5 q8; query prefix; mean pooling; 320-codepoint chunks; length-weighted L2 aggregate. Rank all level centroids, retain 3 distinct standards with document references first, then score every target against every PC in each shortlisted level. Pair percent is mean best-target cosine ×100; never competency coverage.",
+  "scope": "ข้อมูลหลักสูตร ปวช./ปวส. ในรายการต้นทางครบทั้งคลัง เปิดผลที่คำนวณไว้ทันที; รายการขาดข้อมูลและระดับอื่นแสดงแยก; ข้อความที่เก็บไว้เป็น snapshot พร้อมวันที่และแหล่งอ้างอิง"
+}

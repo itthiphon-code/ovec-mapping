@@ -15,6 +15,20 @@
       "when": 1789114410305,
       "tag": "0001_perfect_angel",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1789118784031,
+      "tag": "0002_smart_mole_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1789118784472,
+      "tag": "0003_bulk_embedding_snapshot",
+      "breakpoints": true
     }
   ]
 }

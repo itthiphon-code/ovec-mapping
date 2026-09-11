@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { BulkBrowser, BulkCourse } from "./bulk-mapping";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -35,7 +36,7 @@ import { roleLabels, type User } from "@/lib/types";
 
 const nav = [
   { path: "/", label: "ภาพรวม", icon: LayoutDashboard },
-  { path: "/automatic", label: "วิเคราะห์อัตโนมัติ", icon: Sparkles },
+  { path: "/automatic", label: "ผลจับคู่ทั้งคลัง", icon: Sparkles },
   { path: "/courses", label: "รายวิชาอาชีวศึกษา", icon: BookOpen },
   { path: "/standards", label: "มาตรฐาน TPQI", icon: Layers3 },
   { path: "/mappings", label: "ตารางเทียบสมรรถนะ", icon: GitCompareArrows },
@@ -56,7 +57,18 @@ export default function CompassApp() {
   let view;
   if (!parts.length) view = <Dashboard user={user} />;
   else if (parts[0] === "automatic")
-    view = <NewMapping key="automatic" user={user} automatic />;
+    view =
+      parts[1] === "new" ? (
+        <NewMapping key="automatic" user={user} automatic />
+      ) : parts[1] ? (
+        <BulkCourse
+          key={parts[1]}
+          id={decodeURIComponent(parts[1])}
+          user={user}
+        />
+      ) : (
+        <BulkBrowser />
+      );
   else if (parts[0] === "courses" || parts[0] === "standards")
     view = parts[1] ? (
       <CatalogDetail id={decodeURIComponent(parts.slice(1).join("/"))} />

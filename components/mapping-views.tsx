@@ -94,6 +94,18 @@ export function MappingsView({
           </span>
         </div>
       )}
+      <div className="panel section-heading">
+        <div>
+          <h3>ผลจับคู่ที่คำนวณพร้อมไว้แล้ว</h3>
+          <p className="muted">
+            เปิดผลทั้งคลังได้ทันที
+            ก่อนเลือกคู่ไปจัดทำหลักฐานและมอบหมายผู้เชี่ยวชาญ
+          </p>
+        </div>
+        <Link className="button secondary" href="/automatic">
+          เปิดผลทั้งคลัง <ArrowRight size={16} />
+        </Link>
+      </div>
       <div className="filter-row">
         <div className="tabs">
           {[

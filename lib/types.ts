@@ -110,6 +110,7 @@ export type MappingRow = {
   critical: boolean;
 };
 export type MappingPayload = {
+  bulkSource?: { runId: string; courseId: string; pairId: string };
   course: CourseDetail;
   standard: StandardDetail;
   levelName: string;
