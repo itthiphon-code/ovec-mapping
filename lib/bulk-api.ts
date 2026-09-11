@@ -96,10 +96,13 @@ export async function handleBulk(
     const clauses = ["run_id=?"],
       args: (string | number)[] = [run.id];
     if (q) {
+      const courseOnly = url.searchParams.get("searchIn") === "course";
       clauses.push(
-        "(code LIKE ? OR title LIKE ? OR department LIKE ? OR standard_title LIKE ?)",
+        courseOnly
+          ? "(code LIKE ? OR title LIKE ? OR department LIKE ?)"
+          : "(code LIKE ? OR title LIKE ? OR department LIKE ? OR standard_title LIKE ?)",
       );
-      args.push(...Array(4).fill("%" + q + "%"));
+      args.push(...Array(courseOnly ? 3 : 4).fill("%" + q + "%"));
     }
     for (const [key, value] of [
       ["level", level],

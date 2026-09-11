@@ -42,9 +42,16 @@ import {
 } from "@/lib/types";
 import { coverage } from "@/lib/policy";
 
-export function DocumentsView({ user }: { user: User | null }) {
+export function DocumentsView({
+  user,
+  personal = false,
+}: {
+  user: User | null;
+  personal?: boolean;
+}) {
+  const searchParams = useSearchParams();
   const resource = useResource<{ items: DocumentRecord[] }>(
-    user ? "documents" : null,
+    user ? `documents${personal ? "?mine=1" : ""}` : null,
   );
   const [open, setOpen] = useState(false),
     [error, setError] = useState(""),
@@ -70,12 +77,31 @@ export function DocumentsView({ user }: { user: User | null }) {
   const items = (resource.data?.items || []).filter(
     (d) => filter === "ALL" || d.kind === filter,
   );
+  if (!user)
+    return (
+      <Empty
+        title="เข้าสู่ระบบเพื่อเก็บเอกสารของคุณ"
+        description="คุณสามารถค้นหาใบรับรองและอ่านคำแนะนำได้ก่อนเพิ่มไฟล์"
+        action={
+          <a
+            href={`/signin-with-chatgpt?return_to=${encodeURIComponent("/documents")}`}
+            className="button primary"
+          >
+            เข้าสู่ระบบ
+          </a>
+        }
+      />
+    );
   return (
     <>
       <PageTitle
         eyebrow="DOCUMENT LIBRARY"
-        title="หลักฐานที่ดี เริ่มจากเอกสารที่ครบ"
-        description="รวบรวมเอกสารอ้างอิงและคุณวุฒิ พร้อมบันทึกที่มาและตรวจสอบไฟล์ย้อนหลัง"
+        title={personal ? "เอกสารของฉัน" : "หลักฐานที่ดี เริ่มจากเอกสารที่ครบ"}
+        description={
+          personal
+            ? "เพิ่มใบรับรองและหลักฐานประกอบ แล้วเลือกไฟล์เหล่านี้เมื่อยื่นคำร้อง รองรับ PDF ไม่เกิน 15 MB ต่อไฟล์"
+            : "รวบรวมเอกสารอ้างอิงและคุณวุฒิ พร้อมบันทึกที่มาและตรวจสอบไฟล์ย้อนหลัง"
+        }
         action={
           <button className="button primary" onClick={() => setOpen(true)}>
             <Upload size={18} />
@@ -83,6 +109,16 @@ export function DocumentsView({ user }: { user: User | null }) {
           </button>
         }
       />
+      {personal && (
+        <div className="learner-actions">
+          <Link className="button secondary" href="/prepare">
+            ควรเตรียมเอกสารอะไร
+          </Link>
+          <Link className="button secondary" href="/applications">
+            ไปคำร้องของฉัน <ArrowRight size={16} />
+          </Link>
+        </div>
+      )}
       <div className="document-banner">
         <span className="document-stack" aria-hidden="true">
           <FileText size={46} />
@@ -201,17 +237,30 @@ export function DocumentsView({ user }: { user: User | null }) {
                 name="title"
                 required
                 maxLength={200}
-                placeholder="เช่น หลักสูตร ปวช. สาขาช่างไฟฟ้า"
+                placeholder={
+                  personal
+                    ? "เช่น ใบรับรองคุณวุฒิ ช่างทดสอบหม้อแปลงไฟฟ้า"
+                    : "เช่น หลักสูตร ปวช. สาขาช่างไฟฟ้า"
+                }
               />
             </label>
             <label>
               ประเภทเอกสาร
-              <select name="kind">
-                <option value="STANDARD">มาตรฐาน TPQI</option>
-                <option value="CURRICULUM">หลักสูตรรายวิชา</option>
+              <select
+                name="kind"
+                defaultValue={
+                  personal || searchParams.get("kind") === "CREDENTIAL"
+                    ? "CREDENTIAL"
+                    : "STANDARD"
+                }
+              >
+                {!personal && <option value="STANDARD">มาตรฐาน TPQI</option>}
+                {!personal && (
+                  <option value="CURRICULUM">หลักสูตรรายวิชา</option>
+                )}
                 <option value="CREDENTIAL">คุณวุฒิวิชาชีพ</option>
                 <option value="EVIDENCE">หลักฐานเพิ่มเติม</option>
-                <option value="POLICY">ระเบียบและนโยบาย</option>
+                {!personal && <option value="POLICY">ระเบียบและนโยบาย</option>}
               </select>
             </label>
             <label className="upload-zone">
@@ -236,14 +285,22 @@ export function DocumentsView({ user }: { user: User | null }) {
   );
 }
 
-export function ApplicationsView({ user }: { user: User | null }) {
+export function ApplicationsView({
+  user,
+  personal = false,
+}: {
+  user: User | null;
+  personal?: boolean;
+}) {
   const searchParams = useSearchParams();
   const suggestedCourse = (searchParams.get("course") || "").slice(0, 40);
   const suggestedNote = (searchParams.get("note") || "").slice(0, 5000);
   const resource = useResource<{ items: Application[] }>(
-      user ? "applications" : null,
+      user ? `applications${personal ? "?mine=1" : ""}` : null,
     ),
-    docs = useResource<{ items: DocumentRecord[] }>(user ? "documents" : null);
+    docs = useResource<{ items: DocumentRecord[] }>(
+      user ? "documents?mine=1" : null,
+    );
   const [open, setOpen] = useState(!!suggestedCourse),
     [selected, setSelected] = useState<Application | null>(null),
     [error, setError] = useState(""),
@@ -252,7 +309,11 @@ export function ApplicationsView({ user }: { user: User | null }) {
     e.preventDefault();
     setBusy(true);
     setError("");
-    const values = Object.fromEntries(new FormData(e.currentTarget));
+    const form = new FormData(e.currentTarget);
+    const values = {
+      ...Object.fromEntries(form),
+      additionalDocumentIds: form.getAll("additionalDocumentIds"),
+    };
     try {
       await api("applications", {
         method: "POST",
@@ -287,11 +348,26 @@ export function ApplicationsView({ user }: { user: User | null }) {
       setBusy(false);
     }
   };
+  if (!user)
+    return (
+      <Empty
+        title="เข้าสู่ระบบเพื่อยื่นและติดตามคำร้อง"
+        description="เมื่อพบรายวิชาที่สนใจ ให้เตรียมใบรับรองและเอกสารประกอบก่อนส่งให้เจ้าหน้าที่"
+        action={
+          <a
+            className="button primary"
+            href={`/signin-with-chatgpt?return_to=${encodeURIComponent(`/applications?${searchParams.toString()}`)}`}
+          >
+            เข้าสู่ระบบ
+          </a>
+        }
+      />
+    );
   return (
     <>
       <PageTitle
         eyebrow="CREDIT TRANSFER REQUESTS"
-        title="คำร้องเทียบโอนคุณวุฒิ"
+        title={personal ? "คำร้องของฉัน" : "คำร้องเทียบโอนคุณวุฒิ"}
         description="ติดตามการตรวจหลักฐานและการประเมินรายบุคคลอย่างเป็นขั้นตอน"
         action={
           <button
@@ -306,6 +382,24 @@ export function ApplicationsView({ user }: { user: User | null }) {
           </button>
         }
       />
+      {personal && (
+        <div className="learner-inline-help">
+          <FileText size={25} />
+          <div>
+            <strong>ก่อนส่งคำร้องครั้งแรก</strong>
+            <p>
+              เพิ่มใบรับรองในเอกสารของฉัน
+              แล้วเลือกไฟล์หลักและเอกสารประกอบในแบบคำร้อง
+            </p>
+          </div>
+          <Link className="button secondary small" href="/prepare">
+            เช็กเอกสารที่ควรแนบ
+          </Link>
+          <Link className="button secondary small" href="/documents">
+            เพิ่มเอกสาร
+          </Link>
+        </div>
+      )}
       <div className="application-journey">
         {[
           "ยื่นคำร้อง",
@@ -433,6 +527,24 @@ export function ApplicationsView({ user }: { user: User | null }) {
                   ))}
               </select>
             </label>
+            <div className="learner-actions">
+              <a
+                className="button secondary small"
+                href="/documents?kind=CREDENTIAL"
+                target="_blank"
+                rel="noreferrer"
+              >
+                เพิ่มไฟล์ในแท็บใหม่
+              </a>
+              <button
+                type="button"
+                className="button secondary small"
+                onClick={docs.reload}
+              >
+                โหลดรายการเอกสารใหม่
+              </button>
+            </div>
+            <ErrorBox message={docs.error} />
             <label>
               รายละเอียดเพิ่มเติม
               <textarea
@@ -442,6 +554,31 @@ export function ApplicationsView({ user }: { user: User | null }) {
                 defaultValue={suggestedNote}
               />
             </label>
+            <fieldset className="learner-attachments">
+              <legend>เอกสารประกอบเพิ่มเติม (ไม่เกิน 10 ไฟล์)</legend>
+              <p>
+                เช่น รายการหน่วยที่สอบผ่าน ผลการประเมิน หรือหลักฐานผลงาน
+                เลือกเฉพาะที่เกี่ยวข้อง และไม่เลือกซ้ำกับไฟล์ใบรับรองหลัก
+              </p>
+              {docs.data?.items
+                .filter((d) => d.owner === user.email)
+                .map((d) => (
+                  <label key={d.id}>
+                    <input
+                      type="checkbox"
+                      name="additionalDocumentIds"
+                      value={d.id}
+                    />
+                    <span>{d.title}</span>
+                  </label>
+                ))}
+              {!docs.data?.items.length && (
+                <p>
+                  ยังไม่มีเอกสารในคลัง{" "}
+                  <Link href="/documents">เพิ่มเอกสารของฉัน</Link>
+                </p>
+              )}
+            </fieldset>
             <button className="button primary full-width" disabled={busy}>
               {busy ? "กำลังส่ง…" : "ยื่นคำร้อง"}
               <ArrowRight size={17} />
@@ -490,27 +627,43 @@ export function ApplicationsView({ user }: { user: User | null }) {
               <Download size={17} />
               เปิดหลักฐานคุณวุฒิ
             </a>
-            {user && ["admin", "registrar"].includes(user.role) && (
-              <form onSubmit={update}>
-                <ErrorBox message={error} />
-                <label>
-                  ปรับขั้นตอน
-                  <select name="status">
-                    <option value="EVIDENCE_CHECK">ตรวจหลักฐาน</option>
-                    <option value="NEEDS_INFORMATION">ขอข้อมูลเพิ่มเติม</option>
-                    <option value="ASSESSMENT">รอประเมินเพิ่มเติม</option>
-                  </select>
-                </label>
-                <label>
-                  ข้อความแจ้งผู้ยื่น
-                  <textarea name="note" required minLength={10} rows={3} />
-                </label>
-                <button className="button primary" disabled={busy}>
-                  <Save size={17} />
-                  บันทึกขั้นตอน
-                </button>
-              </form>
+            {(JSON.parse(selected.payload).additionalDocumentIds || []).map(
+              (docId: string, i: number) => (
+                <a
+                  key={docId}
+                  href={`/api/documents/${encodeURIComponent(docId)}`}
+                  className="button secondary"
+                >
+                  <FileText size={16} />
+                  เปิดเอกสารประกอบ {i + 1}
+                </a>
+              ),
             )}
+            {!personal &&
+              user &&
+              ["admin", "registrar"].includes(user.role) && (
+                <form onSubmit={update}>
+                  <ErrorBox message={error} />
+                  <label>
+                    ปรับขั้นตอน
+                    <select name="status">
+                      <option value="EVIDENCE_CHECK">ตรวจหลักฐาน</option>
+                      <option value="NEEDS_INFORMATION">
+                        ขอข้อมูลเพิ่มเติม
+                      </option>
+                      <option value="ASSESSMENT">รอประเมินเพิ่มเติม</option>
+                    </select>
+                  </label>
+                  <label>
+                    ข้อความแจ้งผู้ยื่น
+                    <textarea name="note" required minLength={10} rows={3} />
+                  </label>
+                  <button className="button primary" disabled={busy}>
+                    <Save size={17} />
+                    บันทึกขั้นตอน
+                  </button>
+                </form>
+              )}
           </div>
         </Modal>
       )}

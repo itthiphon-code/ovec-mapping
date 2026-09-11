@@ -957,11 +957,13 @@ async function handle(
     if (resource === "documents") {
       const actor = requireUser(user);
       const admin = actor.role === "admin";
+      const ownDocuments =
+        !admin || new URL(request.url).searchParams.get("mine") === "1";
       if (method === "GET" && !id)
         return json({
           items: await all<DocumentRecord>(
-            `SELECT id,owner,title,kind,filename,mime,bytes,hash,status,created_at FROM documents ${admin ? "" : "WHERE owner=?"} ORDER BY created_at DESC`,
-            ...(admin ? [] : [actor.email]),
+            `SELECT id,owner,title,kind,filename,mime,bytes,hash,status,created_at FROM documents ${ownDocuments ? "WHERE owner=?" : ""} ORDER BY created_at DESC`,
+            ...(ownDocuments ? [actor.email] : []),
           ),
         });
       if (method === "GET" && id) {
@@ -972,7 +974,8 @@ async function handle(
         if (!doc) throw new HttpError(404, "ไม่พบเอกสาร");
         const linked = ["registrar", "approver"].includes(actor.role)
           ? await one(
-              "SELECT id FROM applications WHERE json_extract(payload, '$.documentId')=? LIMIT 1",
+              "SELECT id FROM applications WHERE json_extract(payload, '$.documentId')=? OR EXISTS (SELECT 1 FROM json_each(applications.payload, '$.additionalDocumentIds') WHERE value=?) LIMIT 1",
+              id,
               id,
             )
           : null;
@@ -1048,11 +1051,13 @@ async function handle(
     if (resource === "applications") {
       const actor = requireUser(user);
       const manager = ["admin", "registrar", "approver"].includes(actor.role);
+      const ownApplications =
+        !manager || new URL(request.url).searchParams.get("mine") === "1";
       if (method === "GET")
         return json({
           items: await all<Application>(
-            `SELECT * FROM applications ${manager ? "" : "WHERE owner=?"} ORDER BY updated_at DESC`,
-            ...(manager ? [] : [actor.email]),
+            `SELECT * FROM applications ${ownApplications ? "WHERE owner=?" : ""} ORDER BY updated_at DESC`,
+            ...(ownApplications ? [actor.email] : []),
           ),
         });
       if (method === "POST" && !id) {
@@ -1064,6 +1069,10 @@ async function handle(
             courseCode: z.string().min(1).max(40),
             note: z.string().max(5000),
             documentId: z.string().uuid(),
+            additionalDocumentIds: z
+              .array(z.string().uuid())
+              .max(10)
+              .default([]),
           })
           .parse(await body(request));
         const doc = await one<DocumentRecord>(
@@ -1076,6 +1085,21 @@ async function handle(
             422,
             "แนบเอกสารประเภทคุณวุฒิจากคลังของคุณก่อนยื่นคำร้อง",
           );
+        const allDocumentIds = [
+          input.documentId,
+          ...input.additionalDocumentIds,
+        ];
+        if (new Set(allDocumentIds).size !== allDocumentIds.length)
+          throw new HttpError(422, "เลือกเอกสารแต่ละไฟล์เพียงครั้งเดียว");
+        for (const extraId of input.additionalDocumentIds) {
+          const extra = await one<{ id: string }>(
+            "SELECT id FROM documents WHERE id=? AND owner=?",
+            extraId,
+            actor.email,
+          );
+          if (!extra)
+            throw new HttpError(422, "เลือกเอกสารประกอบจากคลังของคุณเท่านั้น");
+        }
         const id = uid();
         await runtime.DB.batch([
           statement(

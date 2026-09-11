@@ -2,6 +2,11 @@
 import { useState } from "react";
 import { BulkBrowser, BulkCourse } from "./bulk-mapping";
 import { CertificateSearch, CertificateDetail } from "./certificate-mapping";
+import {
+  LearnerPortal,
+  PreparationPage,
+  LearnerHelpPage,
+} from "./learner-portal";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -44,8 +49,8 @@ const nav = [
   { path: "/standards", label: "มาตรฐาน TPQI", icon: Layers3 },
   { path: "/mappings", label: "ตารางเทียบสมรรถนะ", icon: GitCompareArrows },
   { path: "/reviews", label: "งานผู้เชี่ยวชาญ", icon: BadgeCheck },
-  { path: "/documents", label: "คลังเอกสาร", icon: FolderOpen },
-  { path: "/applications", label: "คำร้องเทียบโอน", icon: ClipboardList },
+  { path: "/staff-documents", label: "คลังเอกสาร", icon: FolderOpen },
+  { path: "/staff-applications", label: "คำร้องเทียบโอน", icon: ClipboardList },
   { path: "/reports", label: "รายงานและการพิมพ์", icon: ChartNoAxesCombined },
 ];
 export default function CompassApp() {
@@ -54,12 +59,22 @@ export default function CompassApp() {
   const me = useResource<{ user: User | null; local: boolean }>("me");
   const user = me.data?.user || null;
   const parts = pathname.split("/").filter(Boolean);
+  const learnerPage = [
+    "",
+    "certificates",
+    "prepare",
+    "help",
+    "documents",
+    "applications",
+  ].includes(parts[0] || "");
   const current =
     (parts[0] === "certificates" ? "ใบรับรองเทียบวิชาอะไร" : null) ||
     nav.find((n) => n.path === `/${parts[0] || ""}`)?.label ||
     (parts[0] === "settings" ? "จัดการระบบ" : "คู่มือการใช้งาน");
   let view;
   if (!parts.length) view = <CertificateSearch />;
+  else if (parts[0] === "prepare") view = <PreparationPage />;
+  else if (parts[0] === "help") view = <LearnerHelpPage />;
   else if (parts[0] === "certificates")
     view = parts[1] ? (
       <CertificateDetail key={parts[1]} id={decodeURIComponent(parts[1])} />
@@ -96,11 +111,23 @@ export default function CompassApp() {
         <MappingsView user={user} />
       );
   else if (parts[0] === "reviews") view = <MappingsView user={user} review />;
-  else if (parts[0] === "documents") view = <DocumentsView user={user} />;
-  else if (parts[0] === "applications") view = <ApplicationsView user={user} />;
+  else if (parts[0] === "documents")
+    view = <DocumentsView user={user} personal />;
+  else if (parts[0] === "applications")
+    view = <ApplicationsView user={user} personal />;
+  else if (parts[0] === "staff-documents") view = <DocumentsView user={user} />;
+  else if (parts[0] === "staff-applications")
+    view = <ApplicationsView user={user} />;
   else if (parts[0] === "reports") view = <ReportsView />;
   else if (parts[0] === "settings") view = <SettingsView user={user} />;
   else view = <Guide />;
+  if (learnerPage)
+    return (
+      <LearnerPortal user={user}>
+        {me.error && <ErrorBox message={`ตรวจสิทธิ์ไม่สำเร็จ: ${me.error}`} />}
+        {view}
+      </LearnerPortal>
+    );
   return (
     <div className="app-shell">
       <a href="#main-content" className="skip-link">

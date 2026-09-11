@@ -2,10 +2,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  Award,
   ArrowRight,
   ArrowLeft,
-  Search,
   Printer,
   ShieldCheck,
   FileText,
@@ -22,164 +20,18 @@ import {
 import {
   certificateResult,
   orderCertificateResults,
-  type CertificateIndex,
   type CertificateFile,
   type CertificateLevel,
 } from "@/lib/certificate-matcher";
+import { LearnerDocumentHint } from "./learner-portal";
 import type { BulkDetail } from "@/lib/bulk-types";
 const basisLabels: Record<string, string> = {
-  DIRECT_CODE: "รหัส UoC ตรงกับเอกสารรายวิชา",
+  DIRECT_CODE: "พบรหัสหน่วยที่ตรงในเอกสารรายวิชา",
   DOCUMENT_TITLE: "ชื่อมาตรฐานอยู่ในเอกสารรายวิชา",
   EMBEDDING: "เสนอจากความหมายข้อความ",
 };
 
-export function CertificateSearch() {
-  const [search, setSearch] = useState(""),
-    [q, setQ] = useState(""),
-    [page, setPage] = useState(1);
-  const resource = useResource<{
-    manifest: Omit<CertificateIndex, "items">;
-    items: CertificateIndex["items"];
-    total: number;
-  }>(`certificates?${new URLSearchParams({ q, page: String(page) })}`);
-  const data = resource.loading ? null : resource.data;
-  return (
-    <>
-      <section className="certificate-hero panel">
-        <div>
-          <span className="eyebrow">YOUR CERTIFICATE → YOUR LEARNING PATH</span>
-          <h1>
-            ใบรับรองที่สอบผ่าน
-            <br />
-            <span>ใช้ขอเทียบวิชาอะไรได้บ้าง</span>
-          </h1>
-          <p>
-            เลือกมาตรฐาน ระดับ และหน่วยสมรรถนะที่ระบุในใบรับรองของคุณ
-            <br />
-            ระบบค้นรายวิชาที่เกี่ยวข้องให้ พร้อมหลักฐานประกอบการพิจารณาเทียบโอน
-          </p>
-          <a className="button primary" href="#certificate-search">
-            ค้นจากใบรับรองของฉัน <ArrowRight size={18} />
-          </a>
-        </div>
-        <div className="certificate-visual" aria-hidden="true">
-          <Award size={56} />
-          <strong>ใบรับรองมาตรฐานวิชาชีพ</strong>
-          <span>มาตรฐาน · ระดับ · UoC ที่สอบผ่าน</span>
-          <div className="certificate-flow">
-            <span>หลักฐาน</span>
-            <ArrowRight size={18} />
-            <span>รายวิชา</span>
-          </div>
-        </div>
-      </section>
-      <div className="application-journey">
-        {[
-          "เลือกใบรับรองที่สอบผ่าน",
-          "ดูรายวิชาที่เกี่ยวข้อง",
-          "ยื่นหลักฐานให้ผู้เชี่ยวชาญ",
-        ].map((t, i) => (
-          <div key={t}>
-            <span>{i + 1}</span>
-            <strong>{t}</strong>
-          </div>
-        ))}
-      </div>
-      <section className="panel certificate-search" id="certificate-search">
-        <h2>1. มาตรฐานในใบรับรองของคุณ</h2>
-        <p className="muted">
-          ค้นชื่ออาชีพหรือสาขาตามใบรับรอง TPQI เช่น ไฟฟ้า งานเชื่อม
-          หรือเทคโนโลยีสารสนเทศ
-        </p>
-        <form
-          className="certificate-search-form no-print"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setQ(search);
-            setPage(1);
-          }}
-        >
-          <label className="sr-only" htmlFor="certificate-query">
-            ชื่ออาชีพหรือสาขาในใบรับรอง
-          </label>
-          <input
-            id="certificate-query"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="พิมพ์ชื่ออาชีพหรือสาขาในใบรับรอง…"
-            maxLength={160}
-          />
-          <button className="button primary">
-            <Search size={18} />
-            ค้นหามาตรฐาน
-          </button>
-        </form>
-        <ErrorBox message={resource.error} />
-        {resource.loading ? (
-          <Loading />
-        ) : data ? (
-          <>
-            <p className="muted">
-              พบ {data.total.toLocaleString()} มาตรฐาน · คัดกรองจาก{" "}
-              {data.manifest.courses.toLocaleString()} รายวิชาไว้แล้ว
-            </p>
-            <div className="certificate-grid">
-              {data.items.map((s) => (
-                <Link
-                  className="certificate-choice"
-                  href={`/certificates/${s.id}`}
-                  key={s.id}
-                >
-                  <Award size={24} />
-                  <div>
-                    <strong>{s.title}</strong>
-                    <p>{s.category}</p>
-                    <small>
-                      {s.levels.join(" · ") || "ยังไม่มีระดับในเอกสาร"}
-                    </small>
-                  </div>
-                  <ArrowRight size={18} />
-                </Link>
-              ))}
-            </div>
-            {!data.total && (
-              <Empty
-                title="ไม่พบชื่อมาตรฐานนี้"
-                description="ลองค้นด้วยชื่ออาชีพหรือคำสั้น ๆ ตามใบรับรอง การไม่พบผลไม่ได้หมายความว่าเทียบโอนไม่ได้"
-              />
-            )}
-            <div className="certificate-pagination no-print">
-              <button
-                className="button secondary"
-                disabled={page <= 1}
-                onClick={() => setPage((p) => p - 1)}
-              >
-                ก่อนหน้า
-              </button>
-              <span>
-                หน้า {page} / {Math.max(1, Math.ceil(data.total / 24))}
-              </span>
-              <button
-                className="button secondary"
-                disabled={page * 24 >= data.total}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                ถัดไป
-              </button>
-            </div>
-          </>
-        ) : null}
-      </section>
-      <div className="notice">
-        <ShieldCheck size={22} />
-        <span>
-          ผลค้นหาเป็นรายวิชาที่เสนอให้พิจารณาเทียบโอน
-          การตรวจใบรับรองและอนุมัติหน่วยกิตต้องดำเนินการโดยผู้เชี่ยวชาญและสถานศึกษา
-        </span>
-      </div>
-    </>
-  );
-}
+export { LearnerSearch as CertificateSearch } from "./learner-search";
 export function CertificateDetail({ id }: { id: string }) {
   const resource = useResource<CertificateFile>(`certificates/${id}`);
   const [levelKey, setLevelKey] = useState("");
@@ -259,9 +111,10 @@ function CertificateScope({
   return (
     <>
       <section className="panel certificate-search">
-        <h2>3. หน่วยสมรรถนะที่สอบผ่าน</h2>
+        <h2>3. คุณสอบผ่านงานหรือหน่วยใดบ้าง</h2>
         <p>
-          เลือกเฉพาะ UoC ที่ปรากฏในใบรับรองหรือเอกสารแนบ หากใบรับรองไม่ระบุหน่วย
+          หน่วยสมรรถนะ (UoC) คือชุดงานที่ได้รับการประเมิน
+          เลือกเฉพาะหน่วยที่ปรากฏในใบรับรองหรือเอกสารแนบ หากใบรับรองไม่ระบุหน่วย
           ให้ผู้เชี่ยวชาญตรวจขอบเขตก่อน
         </p>
         <div className="certificate-actions no-print">
@@ -313,6 +166,7 @@ function CertificateScope({
       ) : (
         <>
           <section className="panel certificate-search">
+            <LearnerDocumentHint />
             <div className="certificate-results-heading">
               <div>
                 <span className="eyebrow">COURSES TO CONSIDER</span>
@@ -444,7 +298,7 @@ function CertificateCourseResult({
         </div>
         <div className="certificate-score">
           <strong>{r.score === null ? "—" : `${r.score.toFixed(1)}%`}</strong>
-          <span>ความคล้าย Embedding</span>
+          <span>ความคล้ายของเนื้อหา</span>
         </div>
       </div>
       {r.mismatch && (

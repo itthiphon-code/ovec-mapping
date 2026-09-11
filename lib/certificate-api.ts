@@ -28,8 +28,12 @@ export async function handleCertificates(
       1,
       Math.min(1000, Math.floor(Number(url.searchParams.get("page")) || 1)),
     );
-    const matches = index.items.filter((i) =>
-      `${i.title} ${i.category}`.toLocaleLowerCase().includes(q),
+    const category = url.searchParams.get("category") || "";
+    const pageSize = url.searchParams.get("pageSize") === "12" ? 12 : 24;
+    const matches = index.items.filter(
+      (i) =>
+        `${i.title} ${i.category}`.toLocaleLowerCase().includes(q) &&
+        (!category || i.category === category),
     );
     const { items: _, ...manifest } = index;
     void _;
@@ -37,8 +41,11 @@ export async function handleCertificates(
       manifest,
       total: matches.length,
       page,
+      categories: [...new Set(index.items.map((i) => i.category))].sort(
+        (a, b) => a.localeCompare(b, "th"),
+      ),
       items: matches
-        .slice((page - 1) * 24, page * 24)
+        .slice((page - 1) * pageSize, page * pageSize)
         .map(({ path: _p, hash: _h, ...i }) => {
           void _p;
           void _h;
