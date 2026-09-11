@@ -1,0 +1,112 @@
+[
+  {
+    "file": "tpqi-stats.json",
+    "url": "https://dles.vec.go.th/api/standards/tpqi/stats",
+    "retrieved_at": "2026-09-11T07:00:49.540643+00:00",
+    "status": 200,
+    "final_url": "https://dles.vec.go.th/api/standards/tpqi/stats",
+    "content_type": "application/json",
+    "bytes": 5496,
+    "sha256": "066efea16532505c02c0d8b029cda378f0a727811216d57a9b7f2bd4019c73a2"
+  },
+  {
+    "file": "tpqi-search-page1.json",
+    "url": "https://dles.vec.go.th/api/standards/tpqi/search?limit=2&page=1",
+    "retrieved_at": "2026-09-11T07:00:49.540918+00:00",
+    "status": 200,
+    "final_url": "https://dles.vec.go.th/api/standards/tpqi/search?limit=2&page=1",
+    "content_type": "application/json",
+    "bytes": 2486,
+    "sha256": "abbbbf9e88cfb6227ac1136fb7faa769d2615af056ac9d9c23ac3736d1b63971"
+  },
+  {
+    "file": "tpqi-search-page2.json",
+    "url": "https://dles.vec.go.th/api/standards/tpqi/search?limit=2&page=2",
+    "retrieved_at": "2026-09-11T07:00:49.541029+00:00",
+    "status": 200,
+    "final_url": "https://dles.vec.go.th/api/standards/tpqi/search?limit=2&page=2",
+    "content_type": "application/json",
+    "bytes": 1913,
+    "sha256": "6320dc028a63818e57a9dbd3a1161c84aee8b53ebebd2864a8e99515555266be"
+  },
+  {
+    "file": "tpqi-detail-22.json",
+    "url": "https://dles.vec.go.th/api/standards/tpqi/22",
+    "retrieved_at": "2026-09-11T07:00:49.637999+00:00",
+    "status": 200,
+    "final_url": "https://dles.vec.go.th/api/standards/tpqi/22",
+    "content_type": "application/json",
+    "bytes": 49033,
+    "sha256": "a24ced1e68a0d17f55108a559b572647041c9bdedbc8382bd5291b33a890380b"
+  },
+  {
+    "file": "source-meta.json",
+    "url": "https://dles.vec.go.th/api/standards/meta",
+    "retrieved_at": "2026-09-11T07:00:49.641667+00:00",
+    "status": 200,
+    "final_url": "https://dles.vec.go.th/api/standards/meta",
+    "content_type": "application/json",
+    "bytes": 190,
+    "sha256": "0904ea680599c1c0a8d67b52be3eede44b3608503bc242fb5710cc4ff62e5981"
+  },
+  {
+    "file": "subject-status.json",
+    "url": "https://dles.vec.go.th/subject/api/std2018-status",
+    "retrieved_at": "2026-09-11T07:00:49.644533+00:00",
+    "status": 200,
+    "final_url": "https://dles.vec.go.th/subject/api/std2018-status",
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 234,
+    "sha256": "08996362d6d45815fc8e0c9f8c5f406e77c2f574673f26e992888fa272cf4aea"
+  },
+  {
+    "file": "subject-search-offset0.json",
+    "url": "https://dles.vec.go.th/subject/api/search?limit=2&offset=0",
+    "retrieved_at": "2026-09-11T07:00:49.732589+00:00",
+    "status": 200,
+    "final_url": "https://dles.vec.go.th/subject/api/search?limit=2&offset=0",
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 63257,
+    "sha256": "2a9d508e17571d32ef5505f0f13bda54f983fba970f40ccc3c9a26608375367e"
+  },
+  {
+    "file": "subject-search-offset2.json",
+    "url": "https://dles.vec.go.th/subject/api/search?limit=2&offset=2",
+    "retrieved_at": "2026-09-11T07:00:49.735175+00:00",
+    "status": 200,
+    "final_url": "https://dles.vec.go.th/subject/api/search?limit=2&offset=2",
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 63266,
+    "sha256": "80b7c52a2c472fe87fbdcf6c1f1d4e5f6a7a13d8ccc8a0b9324c5335e59c73d1"
+  },
+  {
+    "file": "subject-20100-1001.json",
+    "url": "https://dles.vec.go.th/subject/api/subject-detail?code=20100-1001&dept=20101",
+    "retrieved_at": "2026-09-11T07:00:49.750854+00:00",
+    "status": 200,
+    "final_url": "https://dles.vec.go.th/subject/api/subject-detail?code=20100-1001&dept=20101",
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 4313,
+    "sha256": "df0308eb3cdd2f622fd39c7453ed50df28461409367b8072a15bc76fc2fcb0db"
+  },
+  {
+    "file": "reference-20100-1001.json",
+    "url": "https://dles.vec.go.th/subject/api/link/course?code=20100-1001&dept=20101",
+    "retrieved_at": "2026-09-11T07:00:49.831643+00:00",
+    "status": 200,
+    "final_url": "https://dles.vec.go.th/subject/api/link/course?code=20100-1001&dept=20101",
+    "content_type": "application/json; charset=utf-8",
+    "bytes": 6397,
+    "sha256": "663b07dbbacad632151fcc8c7e9b1c0d75fb23fca3f970d49f9657eac596eed0"
+  },
+  {
+    "file": "curriculum-20101v8.pdf",
+    "url": "https://bsq.vec.go.th/wp-content/uploads/sites/13/2026/03/20101v8.pdf",
+    "retrieved_at": "2026-09-11T07:00:49.853105+00:00",
+    "status": 200,
+    "final_url": "https://bsq.vec.go.th/wp-content/uploads/sites/13/2026/03/20101v8.pdf",
+    "content_type": "application/pdf",
+    "bytes": 23926434,
+    "sha256": "3da34075a4b6be66bebed6a47a7f26c9cc8c194901ebfc0aa9c896c2535aa48b"
+  }
+]
