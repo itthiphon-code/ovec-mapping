@@ -403,7 +403,7 @@ function CourseCertificates({
           <p className="learner-small-note">
             ใบรับรองด้านล่างเป็น {data.pairs.length}{" "}
             ตัวเลือกที่คัดไว้สำหรับรายวิชานี้ อาจมีตัวเลือกอื่นนอกชุดผล
-            คะแนนคือความคล้ายของเนื้อหา ไม่ใช่ผลอนุมัติ หากยังไม่มีใบรับรอง
+            รายการนี้ยังไม่ใช่ผลอนุมัติ หากยังไม่มีใบรับรอง
             ให้สถานศึกษาตรวจแนวทางก่อนตัดสินใจเข้าสอบ
           </p>
           <div className="learner-result-grid">
@@ -418,10 +418,6 @@ function CourseCertificates({
                 </Badge>
                 <h3>{pair.title}</h3>
                 <p>{pair.level}</p>
-                <div className="learner-pair-score">
-                  <strong>{pair.score.toFixed(1)}%</strong>
-                  <span>ความคล้ายของเนื้อหา</span>
-                </div>
                 {pair.mismatch && (
                   <p className="certificate-gap">
                     ระดับหรือหน่วยอ้างอิงไม่ตรง ต้องให้ผู้เชี่ยวชาญตรวจ
