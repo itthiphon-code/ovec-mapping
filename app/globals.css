@@ -5577,3 +5577,51 @@ table caption {
     display: none;
   }
 }
+
+.report-export-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 14px;
+  padding: 18px;
+  margin: 18px 0;
+  border: 1px solid var(--border, #dce5e1);
+  border-radius: 16px;
+  background: #f5faf8;
+}
+.report-export-options > label {
+  min-width: 240px;
+  flex: 1;
+}
+.report-export-options > small {
+  flex-basis: 100%;
+  color: #52645e;
+}
+.report-download {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 100%;
+}
+.report-download > small {
+  color: #52645e;
+}
+@media (max-width: 600px) {
+  .report-export-options {
+    align-items: stretch;
+  }
+  .report-export-options > label {
+    min-width: 0;
+    width: 100%;
+    flex-basis: 100%;
+  }
+  .report-download .inline-actions {
+    flex-wrap: wrap;
+  }
+}
+@media print {
+  .report-export-options,
+  .report-download {
+    display: none !important;
+  }
+}

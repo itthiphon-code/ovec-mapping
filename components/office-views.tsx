@@ -40,6 +40,8 @@ import {
   type MappingPayload,
   type Review,
 } from "@/lib/types";
+import { ReportDownload } from "./report-download";
+import { createMappingReport, type MappingReportMode } from "@/lib/report-data";
 import { coverage } from "@/lib/policy";
 
 export function DocumentsView({
@@ -1100,7 +1102,7 @@ export function SettingsView({ user }: { user: User | null }) {
 export function ReportsView() {
   const params = useSearchParams(),
     id = params.get("mapping"),
-    [mode, setMode] = useState("matrix");
+    [mode, setMode] = useState<MappingReportMode>("matrix");
   const list = useResource<{ items: Mapping[] }>(id ? null : "mappings"),
     detail = useResource<{ mapping: Mapping; reviews: Review[] }>(
       id ? `mappings/${id}` : null,
@@ -1162,9 +1164,14 @@ export function ReportsView() {
           <PageTitle
             eyebrow="REPORT PREVIEW"
             title="รายงานที่ตรวจสอบย้อนกลับได้"
-            description="ตรวจตัวอย่างก่อนพิมพ์ · เลือกบันทึกเป็น PDF ได้ในหน้าต่างพิมพ์"
+            description="ดาวน์โหลด PDF หรือ Word ตามประเภทรายงานที่เลือก · Word เป็นสำเนาแก้ไขได้"
             action={
               <div className="inline-actions">
+                <ReportDownload
+                  buildReport={() =>
+                    createMappingReport(m, detail.data!.reviews, mode)
+                  }
+                />
                 <button className="button secondary" onClick={csv}>
                   <Download size={17} />
                   ส่งออก CSV
@@ -1189,7 +1196,7 @@ export function ReportsView() {
               <button
                 key={t.id}
                 className={mode === t.id ? "selected" : ""}
-                onClick={() => setMode(t.id)}
+                onClick={() => setMode(t.id as MappingReportMode)}
               >
                 {t.title}
               </button>

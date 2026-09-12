@@ -23,6 +23,8 @@ import {
   type CertificateFile,
   type CertificateLevel,
 } from "@/lib/certificate-matcher";
+import { ReportDownload } from "./report-download";
+import { createCertificateReport } from "@/lib/report-data";
 import { LearnerDocumentHint } from "./learner-portal";
 import type { BulkDetail } from "@/lib/bulk-types";
 const basisLabels: Record<string, string> = {
@@ -97,7 +99,8 @@ function CertificateScope({
   const units = file.standard.levels[levelIndex].units;
   const [selected, setSelected] = useState<string[]>([]),
     [courseLevel, setCourseLevel] = useState(""),
-    [q, setQ] = useState("");
+    [q, setQ] = useState(""),
+    [reportDetail, setReportDetail] = useState(false);
   const allResults = level.courses
     .map((c) => certificateResult(c, level, selected))
     .sort(orderCertificateResults);
@@ -208,6 +211,39 @@ function CertificateScope({
                   placeholder="รหัสวิชา ชื่อวิชา หรือสาขา"
                 />
               </label>
+            </div>
+            <div className="report-export-options no-print">
+              <label>
+                รูปแบบรายงาน
+                <select
+                  value={reportDetail ? "evidence" : "summary"}
+                  onChange={(e) =>
+                    setReportDetail(e.target.value === "evidence")
+                  }
+                >
+                  <option value="summary">สรุปรายวิชาและแหล่งอ้างอิง</option>
+                  <option value="evidence">
+                    รายวิชาพร้อมตารางหลักฐานรายข้อ
+                  </option>
+                </select>
+              </label>
+              <ReportDownload
+                disabled={!results.length}
+                buildReport={() =>
+                  createCertificateReport({
+                    file,
+                    level,
+                    selected,
+                    results,
+                    detailed: reportDetail,
+                    filterDescription: `ระดับ: ${courseLevel || "ทุกระดับ"} | คำค้น: ${q.trim() || "ไม่ได้กรองคำค้น"}`,
+                  })
+                }
+              />
+              <small>
+                ดาวน์โหลดตามรายวิชาที่กรองไว้ {results.length} วิชา · Word
+                เป็นสำเนาแก้ไขได้
+              </small>
             </div>
             <p className="muted">
               แสดง {results.length} จาก {level.courses.length}{" "}
