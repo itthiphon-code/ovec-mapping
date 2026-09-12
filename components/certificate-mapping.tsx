@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import {
   PageTitle,
+  api,
   useResource,
   Loading,
   ErrorBox,
@@ -23,6 +24,11 @@ import {
   type CertificateFile,
   type CertificateLevel,
 } from "@/lib/certificate-matcher";
+import {
+  certificateCrosswalk,
+  type CrosswalkDepth,
+} from "@/lib/course-crosswalk";
+import { loadReportSources } from "@/lib/report-source-loader";
 import { ReportDownload } from "./report-download";
 import { createCertificateReport } from "@/lib/report-data";
 import { LearnerDocumentHint } from "./learner-portal";
@@ -100,7 +106,8 @@ function CertificateScope({
   const [selected, setSelected] = useState<string[]>([]),
     [courseLevel, setCourseLevel] = useState(""),
     [q, setQ] = useState(""),
-    [reportDetail, setReportDetail] = useState(false);
+    [reportDetail, setReportDetail] = useState(true),
+    [depth, setDepth] = useState<CrosswalkDepth>("eoc");
   const allResults = level.courses
     .map((c) => certificateResult(c, level, selected))
     .sort(orderCertificateResults);
@@ -223,22 +230,45 @@ function CertificateScope({
                 >
                   <option value="summary">สรุปรายวิชาและแหล่งอ้างอิง</option>
                   <option value="evidence">
-                    รายวิชาพร้อมตารางหลักฐานรายข้อ
+                    เทียบคำอธิบาย สมรรถนะ ผลลัพธ์ กับ UoC/EoC
                   </option>
                 </select>
               </label>
+              {reportDetail && (
+                <label>
+                  ระดับรายละเอียดมาตรฐาน
+                  <select
+                    value={depth}
+                    onChange={(e) => setDepth(e.target.value as CrosswalkDepth)}
+                  >
+                    <option value="eoc">EoC ภายใต้ UoC พร้อมเกณฑ์ PC</option>
+                    <option value="uoc">UoC พร้อมหลักฐานภายในหน่วย</option>
+                  </select>
+                </label>
+              )}
               <ReportDownload
                 disabled={!results.length}
-                buildReport={() =>
-                  createCertificateReport({
+                buildReport={async () => {
+                  const sources = reportDetail
+                    ? await loadReportSources(
+                        results.map((r) => r.course),
+                        (courseId) =>
+                          api<BulkDetail>(
+                            `certificates/${file.standard.id}/course?courseId=${encodeURIComponent(courseId)}`,
+                          ),
+                      )
+                    : undefined;
+                  return createCertificateReport({
                     file,
                     level,
                     selected,
                     results,
                     detailed: reportDetail,
+                    depth,
+                    sources,
                     filterDescription: `ระดับ: ${courseLevel || "ทุกระดับ"} | คำค้น: ${q.trim() || "ไม่ได้กรองคำค้น"}`,
-                  })
-                }
+                  });
+                }}
               />
               <small>
                 ดาวน์โหลดตามรายวิชาที่กรองไว้ {results.length} วิชา · Word
@@ -266,6 +296,7 @@ function CertificateScope({
                 file={file}
                 level={level}
                 selected={selected}
+                depth={depth}
               />
             ))}
             {!results.length && (
@@ -303,11 +334,13 @@ function CertificateCourseResult({
   file,
   level,
   selected,
+  depth,
 }: {
   result: ReturnType<typeof certificateResult>;
   file: CertificateFile;
   level: CertificateLevel;
   selected: string[];
+  depth: CrosswalkDepth;
 }) {
   const [open, setOpen] = useState(false);
   const source = useResource<BulkDetail>(
@@ -370,56 +403,47 @@ function CertificateCourseResult({
             และเกณฑ์ความปลอดภัย
             การจับคู่ด้านล่างยังไม่ยืนยันว่าผ่านผลลัพธ์รายวิชาแล้ว
           </p>
-          <div className="table-scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th>ข้อกำหนดรายวิชา</th>
-                  <th>PC ภายใน UoC ที่เลือก</th>
-                </tr>
-              </thead>
-              <tbody>
-                {r.matches.map((m) => (
-                  <tr key={m.target.id}>
-                    <td>
-                      <strong>{m.target.kind}</strong>
-                      <p>{m.target.text}</p>
-                      <small>{m.target.locator}</small>
-                    </td>
-                    <td>
-                      {m.criterion ? (
-                        <>
-                          <strong>
-                            {m.criterion.unit} / {m.criterion.eoc}
-                          </strong>
-                          <p>{m.criterion.text}</p>
-                          <small>{m.criterion.locator}</small>
-                          {/ปฏิบัติ|ติดตั้ง|ทดสอบ|ซ่อม|บำรุง|ตรวจสอบ/.test(
-                            m.target.text,
-                          ) &&
-                            /อธิบาย|ความรู้|เข้าใจ/.test(m.criterion.text) && (
-                              <p className="certificate-gap">
-                                PC นี้กล่าวถึงความรู้หรือการอธิบาย
-                                ต้องตรวจหลักฐานปฏิบัติเพิ่มตามข้อกำหนดรายวิชา
-                              </p>
-                            )}
-                          {/ปลอดภัย|อันตราย|ฉุกเฉิน/.test(
-                            m.target.text + m.criterion.text,
-                          ) && (
-                            <p className="certificate-gap">
-                              ต้องตรวจหลักฐานด้านความปลอดภัย
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        "ยังไม่มี PC ในหน่วยที่เลือก"
-                      )}
-                    </td>
+          {!source.loading && source.data && (
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>คำอธิบาย สมรรถนะ และผลลัพธ์การเรียนรู้</th>
+                    <th>อาชีพ UoC และ EoC</th>
+                    <th>สถานะและสิ่งที่ต้องตรวจ</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {certificateCrosswalk({
+                    file,
+                    level,
+                    selected,
+                    result: r,
+                    course: source.data.course,
+                    depth,
+                  }).map((row, i) => (
+                    <tr key={i}>
+                      <td>
+                        <strong>{row.kind}</strong>
+                        <p style={{ whiteSpace: "pre-line" }}>
+                          {row.courseText}
+                        </p>
+                        <small>{row.courseLocator}</small>
+                      </td>
+                      <td style={{ whiteSpace: "pre-line" }}>
+                        {row.standardText}
+                      </td>
+                      <td>
+                        {row.notes.map((note) => (
+                          <p key={note}>{note}</p>
+                        ))}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           <ErrorBox message={source.error} />
           {source.loading ? (
             <Loading />

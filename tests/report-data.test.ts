@@ -86,6 +86,25 @@ function cert(detailed = true) {
     selected: ["U1"],
     results: level.courses.map((c) => certificateResult(c, level, ["U1"])),
     detailed,
+    sources: {
+      "D:C1": {
+        runId: "test-run",
+        courseId: "D:C1",
+        summary: file.results[0].courses[0].summary,
+        course: {
+          ...p.course,
+          description: "ศึกษาการติดตั้งอย่างปลอดภัย",
+          competencies: "ติดตั้งและทดสอบความปลอดภัย",
+          learningOutcomes: "ติดตั้งและทดสอบความปลอดภัย",
+        },
+        provenance: {},
+        courseHash: "c".repeat(64),
+        targets: [],
+        pairs: [],
+        status: "COMPUTED",
+        note: "",
+      },
+    },
     filterDescription: "ระดับ ปวส.",
     generatedAt: "2026-09-12T12:00:00Z",
   });
@@ -122,7 +141,7 @@ test("summary retains all filtered courses and source references but omits detai
   assert.ok(report.meta.some((s) => s.includes("1 จาก 1")));
   assert.ok(
     report.sections.some((s) =>
-      s.paragraphs?.some((t) => t.includes("https://example.test/course.pdf")),
+      s.paragraphs?.some((t) => t.includes(p.course.pdfUrl)),
     ),
   );
   assert.ok(!JSON.stringify(report).includes("อธิบายความปลอดภัย"));

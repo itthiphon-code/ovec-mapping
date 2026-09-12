@@ -25,3 +25,11 @@
 การตรวจรูปแบบต้องเปิดภาพที่เรนเดอร์จากทั้ง PDF และ DOCX รวมถึงหน้าตารางต่อเนื่อง ภาษาไทย และเลขหน้า หากตัวเรนเดอร์ไม่มีฟอนต์ไทย ให้ชี้ Fontconfig ไปยัง `public/fonts/` ก่อนตรวจ
 
 อ้างอิงตัวสร้างเอกสาร: [pdfmake custom fonts](https://pdfmake.github.io/docs/0.1/fonts/custom-fonts-client-side/), [pdfmake tables](https://pdfmake.github.io/docs/0.1/document-definition-object/tables/), [docx Packer](https://docx.js.org/api/classes/Packer.html)
+
+## Course components and occupational units
+
+The detailed report loads each course's original description, competencies, and learning outcomes through the existing hash-verified certificate endpoint before export. It includes the complete source text, then a crosswalk with occupation, qualification level, UoC/EoC codes and names, and matched PC evidence. Users can select UoC or EoC presentation; detailed reports use A4 landscape.
+
+The existing computed dataset matches learning outcomes and competencies. Description text has no independently computed sentence matches in that dataset. Its crosswalk row therefore shows only selected UoCs explicitly referenced by the course, labeled as documentary scope pending expert review. Without a direct reference, no unit match is invented. Missing or deduplicated dimensions remain visible with an explanation.
+
+`lib/course-crosswalk.ts` supplies both screen and export rows. Names resolve only within the selected qualification level and UoC. `lib/report-source-loader.ts` loads up to four sources concurrently and checks the course and department identities. A failed source request prevents an incomplete detailed report and permits retry. Scoring, ranking, and approval remain unchanged.

@@ -40,6 +40,7 @@ import {
   type MappingPayload,
   type Review,
 } from "@/lib/types";
+import { courseDimensions, occupationEvidence } from "@/lib/course-crosswalk";
 import { ReportDownload } from "./report-download";
 import { createMappingReport, type MappingReportMode } from "@/lib/report-data";
 import { coverage } from "@/lib/policy";
@@ -1246,12 +1247,25 @@ export function ReportsView() {
               {date(m.updated_at)}
             </p>
           </section>
+          {(mode === "matrix" || mode === "evidence") && (
+            <section className="report-evidence">
+              <h2>ข้อมูลรายวิชาจากต้นฉบับ</h2>
+              {courseDimensions.map(([label, key]) => (
+                <div key={key}>
+                  <h3>{label}</h3>
+                  <p style={{ whiteSpace: "pre-line" }}>
+                    {p.course[key] || "ไม่ระบุในข้อมูลต้นฉบับ"}
+                  </p>
+                </div>
+              ))}
+            </section>
+          )}
           {mode === "matrix" && (
             <table className="report-table">
               <thead>
                 <tr>
                   <th>ข้อกำหนดรายวิชา</th>
-                  <th>UoC / EoC / เกณฑ์</th>
+                  <th>อาชีพ / UoC / EoC / เกณฑ์</th>
                   <th>ผลการเทียบ</th>
                   <th>เหตุผลและช่องว่าง</th>
                   <th>หลักฐานอ้างอิง</th>
@@ -1267,10 +1281,16 @@ export function ReportsView() {
                       <br />
                       {r.target}
                     </td>
-                    <td>
-                      {r.uoc || "—"} / {r.eoc || "—"}
-                      <br />
-                      {r.criterion}
+                    <td style={{ whiteSpace: "pre-line" }}>
+                      {occupationEvidence(
+                        p.standard,
+                        p.standard.levels.find(
+                          (l) => l.levelName === p.levelName,
+                        ),
+                        r.uoc,
+                        r.eoc,
+                        r.criterion,
+                      )}
                     </td>
                     <td>{statusLabelsForReport(r.status)}</td>
                     <td>

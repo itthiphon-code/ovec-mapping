@@ -13,6 +13,7 @@ import {
 } from "../lib/report-data";
 import { createReportPdf, createReportWord } from "../lib/report-export";
 import { fixture } from "../tests/fixtures/mapping";
+import { loadReportSources } from "../lib/report-source-loader";
 import type { Mapping } from "../lib/types";
 
 const directory = "tmp/report-qa";
@@ -30,11 +31,24 @@ const selected = [...new Set(level.criteria.map((c) => c.unit))];
 const results = level.courses
   .map((c) => certificateResult(c, level, selected))
   .sort(orderCertificateResults);
+const sources = await loadReportSources(
+  results.map((r) => r.course),
+  async (id) => {
+    const course = results.find((r) => r.course.id === id)!.course;
+    return JSON.parse(readFileSync(`public${course.sourcePath}`, "utf8"));
+  },
+);
 const fonts = {
   regular: readFileSync("public/fonts/Sarabun-Regular.ttf"),
   bold: readFileSync("public/fonts/Sarabun-Bold.ttf"),
 };
-const base = { file, level, selected, generatedAt: "2026-09-12T12:00:00Z" };
+const base = {
+  file,
+  level,
+  selected,
+  sources,
+  generatedAt: "2026-09-12T12:00:00Z",
+};
 const mapping: Mapping = {
   id: "qa-draft",
   title: "ตัวอย่างทดสอบรูปแบบเอกสาร ไม่ใช่ผลรับรอง",

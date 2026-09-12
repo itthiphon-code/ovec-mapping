@@ -8,7 +8,7 @@ export function ReportDownload({
   buildReport,
   disabled = false,
 }: {
-  buildReport: () => TransferReport;
+  buildReport: () => TransferReport | Promise<TransferReport>;
   disabled?: boolean;
 }) {
   const [busy, setBusy] = useState<ReportFormat | null>(null);
@@ -23,7 +23,7 @@ export function ReportDownload({
     setMessage("กำลังจัดทำเอกสาร กรุณารอสักครู่");
     try {
       // Snapshot the current filter/scope before loading the exporters.
-      const report = buildReport();
+      const report = await buildReport();
       const { downloadReport } = await import("@/lib/report-export");
       await downloadReport(report, format);
       setMessage(

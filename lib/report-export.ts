@@ -1,5 +1,5 @@
 import type { Content, TDocumentDefinitions } from "pdfmake/interfaces";
-import type { TransferReport } from "./report-data";
+import type { ReportSection, TransferReport } from "./report-data";
 import { editableCopyNotice, reportDisclaimer } from "./report-data";
 
 export type ReportFonts = { regular: Uint8Array; bold: Uint8Array };
@@ -43,6 +43,17 @@ function pdfText(s: string): Content[] {
   );
 }
 
+// Keep only short reference blocks together. A block taller than a page can
+// otherwise be discarded by pdfmake, especially with landscape course text.
+function keepSectionTogether(section: ReportSection) {
+  const paragraphs = section.paragraphs || [];
+  return (
+    !section.table &&
+    paragraphs.length <= 5 &&
+    paragraphs.join("").length < 700 &&
+    paragraphs.reduce((n, p) => n + p.split("\n").length, 0) < 10
+  );
+}
 export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
   const content: Content[] = [
     {
@@ -72,6 +83,7 @@ export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
     const sectionStart = content.length;
     content.push({
       text: pdfText(section.title),
+      headlineLevel: 1,
       fontSize: 14,
       bold: true,
       color: "#115e59",
@@ -88,9 +100,13 @@ export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
           fontSize: 10,
           table: {
             headerRows: 1,
+            keepWithHeaderRows: 1,
             dontBreakRows: section.table.rows.every((row) =>
               row.every(
-                (cell) => cell.length < 600 && cell.split("\n").length < 10,
+                (cell) =>
+                  cell.length <
+                    (section.table!.headers.length <= 3 ? 900 : 600) &&
+                  cell.split("\n").length < 10,
               ),
             ),
             widths: section.table.headers.map(() => "*"),
@@ -118,7 +134,7 @@ export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
         });
       }
     }
-    if (!section.table && (section.paragraphs || []).join("").length < 1600) {
+    if (keepSectionTogether(section)) {
       content.push({ stack: content.splice(sectionStart), unbreakable: true });
     }
   }
@@ -130,6 +146,8 @@ export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
       creator: "OVEC Mapping",
     },
     pageSize: "A4",
+    pageBreakBefore: (node, following, _next, previous) =>
+      node.headlineLevel === 1 && following.length === 0 && previous.length > 0,
     pageOrientation: report.landscape ? "landscape" : "portrait",
     pageMargins: [36, 52, 36, 55],
     defaultStyle: {
@@ -228,9 +246,7 @@ export async function createReportWord(
         para(
           text,
           false,
-          !section.table &&
-            paragraphs.join("").length < 1600 &&
-            index < paragraphs.length - 1,
+          keepSectionTogether(section) && index < paragraphs.length - 1,
         ),
       ),
     );
