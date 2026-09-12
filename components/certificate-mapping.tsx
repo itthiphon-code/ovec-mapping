@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useReducer, useState } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -20,10 +20,13 @@ import {
 } from "./ui";
 import {
   certificateResult,
-  orderCertificateResults,
   type CertificateFile,
   type CertificateLevel,
 } from "@/lib/certificate-matcher";
+import {
+  certificateSelection,
+  orderLearnerCourses,
+} from "@/lib/certificate-selection";
 import {
   certificateCrosswalk,
   type CrosswalkDepth,
@@ -103,14 +106,19 @@ function CertificateScope({
   levelIndex: number;
 }) {
   const units = file.standard.levels[levelIndex].units;
-  const [selected, setSelected] = useState<string[]>([]),
-    [courseLevel, setCourseLevel] = useState(""),
+  const [selection, dispatch] = useReducer(certificateSelection, {
+    units: [],
+    courses: [],
+  });
+  const selected = selection.units;
+  const setSelected = (units: string[]) => dispatch({ type: "scope", units });
+  const [courseLevel, setCourseLevel] = useState(""),
     [q, setQ] = useState(""),
     [reportDetail, setReportDetail] = useState(true),
     [depth, setDepth] = useState<CrosswalkDepth>("eoc");
   const allResults = level.courses
     .map((c) => certificateResult(c, level, selected))
-    .sort(orderCertificateResults);
+    .sort(orderLearnerCourses);
   const results = allResults.filter(
     (r) =>
       (!courseLevel || r.course.summary.level === courseLevel) &&
@@ -118,6 +126,13 @@ function CertificateScope({
         q.trim(),
       ),
   );
+  const chosenResults = allResults.filter((r) =>
+    selection.courses.includes(r.course.id),
+  );
+  const visibleIds = new Set(results.map((r) => r.course.id));
+  const hiddenChosenCount = chosenResults.filter(
+    (r) => !visibleIds.has(r.course.id),
+  ).length;
   return (
     <>
       <section className="panel certificate-search">
@@ -147,10 +162,10 @@ function CertificateScope({
                 type="checkbox"
                 checked={selected.includes(u.uoc_code)}
                 onChange={(e) =>
-                  setSelected((prev) =>
+                  setSelected(
                     e.target.checked
-                      ? [...prev, u.uoc_code]
-                      : prev.filter((x) => x !== u.uoc_code),
+                      ? [...selected, u.uoc_code]
+                      : selected.filter((x) => x !== u.uoc_code),
                   )
                 }
               />
@@ -184,10 +199,11 @@ function CertificateScope({
               </div>
               <button
                 className="button secondary no-print"
+                disabled={!chosenResults.length}
                 onClick={() => window.print()}
               >
                 <Printer size={18} />
-                พิมพ์ผล
+                พิมพ์วิชาที่เลือก
               </button>
             </div>
             <div className="notice warning">
@@ -219,6 +235,49 @@ function CertificateScope({
                 />
               </label>
             </div>
+            <div className="certificate-selection-bar no-print">
+              <div role="status" aria-live="polite">
+                <strong>เลือกแล้ว {chosenResults.length} วิชา</strong>
+                {hiddenChosenCount > 0 && (
+                  <span>
+                    {" "}
+                    · มี {hiddenChosenCount} วิชาที่อยู่นอกตัวกรองปัจจุบัน
+                  </span>
+                )}
+                <p>
+                  ติ๊กวิชาที่ต้องการเสนอพิจารณา แล้วพิมพ์หรือดาวน์โหลดรายงาน
+                  รายการที่เลือกยังอยู่เมื่อเปลี่ยนตัวกรอง และจะล้างเมื่อเปลี่ยน
+                  UoC หรือระดับใบรับรอง
+                </p>
+              </div>
+              <div className="certificate-actions">
+                <button
+                  className="button secondary"
+                  disabled={
+                    !results.length ||
+                    results.every((r) =>
+                      selection.courses.includes(r.course.id),
+                    )
+                  }
+                  onClick={() =>
+                    dispatch({
+                      type: "courses",
+                      ids: results.map((r) => r.course.id),
+                      checked: true,
+                    })
+                  }
+                >
+                  เลือกทุกวิชาที่แสดง ({results.length})
+                </button>
+                <button
+                  className="button ghost"
+                  disabled={!chosenResults.length}
+                  onClick={() => dispatch({ type: "clear" })}
+                >
+                  ล้างวิชาที่เลือก
+                </button>
+              </div>
+            </div>
             <div className="report-export-options no-print">
               <label>
                 รูปแบบรายงาน
@@ -247,11 +306,11 @@ function CertificateScope({
                 </label>
               )}
               <ReportDownload
-                disabled={!results.length}
+                disabled={!chosenResults.length}
                 buildReport={async () => {
                   const sources = reportDetail
                     ? await loadReportSources(
-                        results.map((r) => r.course),
+                        chosenResults.map((r) => r.course),
                         (courseId) =>
                           api<BulkDetail>(
                             `certificates/${file.standard.id}/course?courseId=${encodeURIComponent(courseId)}`,
@@ -262,22 +321,24 @@ function CertificateScope({
                     file,
                     level,
                     selected,
-                    results,
+                    results: chosenResults,
                     detailed: reportDetail,
                     depth,
                     sources,
-                    filterDescription: `ระดับ: ${courseLevel || "ทุกระดับ"} | คำค้น: ${q.trim() || "ไม่ได้กรองคำค้น"}`,
+                    filterDescription:
+                      "เฉพาะรายวิชาที่ผู้ใช้ติ๊กเลือก รวมรายการที่อยู่นอกตัวกรองหน้าจอ เรียงตามความสอดคล้องจากมากไปน้อย",
                   });
                 }}
               />
               <small>
-                ดาวน์โหลดตามรายวิชาที่กรองไว้ {results.length} วิชา · Word
-                เป็นสำเนาแก้ไขได้
+                ดาวน์โหลดเฉพาะรายวิชาที่ติ๊กเลือก {chosenResults.length} วิชา ·
+                Word เป็นสำเนาแก้ไขได้
               </small>
             </div>
-            <p className="muted">
+            <p className="muted no-print">
               แสดง {results.length} จาก {level.courses.length}{" "}
-              วิชาที่คัดไว้สำหรับระดับนี้ · ให้ความสำคัญกับการอ้างอิงเอกสาร
+              วิชาที่คัดไว้สำหรับระดับนี้ · เรียงตามความสอดคล้องจากมากไปน้อย
+              (วิชาที่ข้อมูลไม่พอคำนวณอยู่ท้ายรายการ)
               <br />
               อาจมีรายวิชาอื่นที่เกี่ยวข้องนอกชุดนี้
               การไม่พบผลยังไม่ใช่ข้อสรุปว่าเทียบโอนไม่ได้
@@ -287,12 +348,19 @@ function CertificateScope({
               <br />
               UoC ที่ผู้ใช้ระบุว่าสอบผ่าน: {selected.join(", ")}
               <br />
+              รายวิชาที่เลือกเพื่อเสนอพิจารณา: {chosenResults.length} วิชา
+              <br />
               สถานะใบรับรอง: ยังไม่ได้ตรวจยืนยัน
             </p>
-            {results.map((r) => (
+            {allResults.map((r) => (
               <CertificateCourseResult
                 key={`${selected.join("|")}:${r.course.id}`}
                 result={r}
+                checked={selection.courses.includes(r.course.id)}
+                visible={visibleIds.has(r.course.id)}
+                onCheckedChange={(checked) =>
+                  dispatch({ type: "courses", ids: [r.course.id], checked })
+                }
                 file={file}
                 level={level}
                 selected={selected}
@@ -300,10 +368,12 @@ function CertificateScope({
               />
             ))}
             {!results.length && (
-              <Empty
-                title="ไม่มีรายวิชาในชุดผลนี้"
-                description="อาจมีวิชาอื่นนอกชุดคัดกรอง หรือข้อมูลมาตรฐานยังไม่พอ ให้ผู้เชี่ยวชาญตรวจค้นเพิ่มเติมได้"
-              />
+              <div className="no-print">
+                <Empty
+                  title="ไม่มีรายวิชาในชุดผลนี้"
+                  description="อาจมีวิชาอื่นนอกชุดคัดกรอง หรือข้อมูลมาตรฐานยังไม่พอ ให้ผู้เชี่ยวชาญตรวจค้นเพิ่มเติมได้"
+                />
+              </div>
             )}
             <details className="certificate-method">
               <summary>แนวทางคัดเลือกและขอบเขตของผล</summary>
@@ -331,12 +401,18 @@ function CertificateScope({
 }
 function CertificateCourseResult({
   result: r,
+  checked,
+  visible,
+  onCheckedChange,
   file,
   level,
   selected,
   depth,
 }: {
   result: ReturnType<typeof certificateResult>;
+  checked: boolean;
+  visible: boolean;
+  onCheckedChange: (checked: boolean) => void;
   file: CertificateFile;
   level: CertificateLevel;
   selected: string[];
@@ -350,7 +426,18 @@ function CertificateCourseResult({
   );
   const note = `ผลค้นจากใบรับรอง: ${file.standard.title} / ${level.levelName}\nUoC ที่ผู้ยื่นระบุว่าสอบผ่าน: ${selected.join(", ")}\nสาขารายวิชา: ${r.course.summary.deptCode} ${r.course.summary.deptName}\nรอบคำนวณ: ${file.runId}\nยังไม่ได้ตรวจใบรับรองหรืออนุมัติเทียบโอน`;
   return (
-    <article className="certificate-result">
+    <article
+      className={`certificate-result${checked ? " course-selected" : ""}${visible ? "" : " course-filtered-out"}`}
+    >
+      <label className="certificate-course-checkbox no-print">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onCheckedChange(e.target.checked)}
+          aria-label={`เลือกวิชา ${r.course.summary.code} ${r.course.summary.nameTh} สาขา ${r.course.summary.deptName} เพื่อเสนอพิจารณา`}
+        />
+        <span>เลือกวิชานี้เพื่อเสนอพิจารณา</span>
+      </label>
       <div className="certificate-result-top">
         <div>
           <Badge>{basisLabels[r.basis]}</Badge>

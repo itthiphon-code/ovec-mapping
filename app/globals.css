@@ -4367,6 +4367,41 @@ table caption {
   border-top: 1px solid #dce5ea;
   break-inside: avoid;
 }
+.certificate-selection-bar {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: #edf7f7;
+  border: 1px solid #b7dcdc;
+  border-radius: 12px;
+}
+.certificate-selection-bar p {
+  margin: 0.4rem 0 0.8rem;
+  font-size: 0.85rem;
+  color: #42616c;
+}
+.certificate-course-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  padding: 0.65rem;
+  margin-bottom: 0.7rem;
+  border: 1px solid #ccdce2;
+  border-radius: 8px;
+}
+.certificate-course-checkbox input {
+  width: 1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+  accent-color: #187b7e;
+}
+.course-selected .certificate-course-checkbox {
+  background: #edf7f7;
+  border-color: #187b7e;
+}
+.course-filtered-out {
+  display: none;
+}
 .certificate-result-top {
   display: flex;
   gap: 1rem;
@@ -4515,6 +4550,12 @@ table caption {
   }
   .certificate-result {
     break-inside: auto;
+  }
+  .certificate-result:not(.course-selected) {
+    display: none !important;
+  }
+  .certificate-result.course-selected {
+    display: block;
   }
   .certificate-result-top {
     break-inside: avoid;
