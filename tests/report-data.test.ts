@@ -214,7 +214,8 @@ test("PDF layout preserves the disclaimer, Thai font and repeating table headers
   assert.ok(
     extract(definition.content)
       .replaceAll("\u200b", "")
-      .includes("ไม่ใช่คำตัดสินเทียบโอนหน่วยกิต"),
+      .normalize("NFKD")
+      .includes("ไม่ใช่คำตัดสินเทียบโอนหน่วยกิต".normalize("NFKD")),
   );
   assert.ok(JSON.stringify(definition).includes('"headerRows":1'));
 });

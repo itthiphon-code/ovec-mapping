@@ -28,7 +28,10 @@ const dateLabel = (s: string) =>
 // Thai has no spaces between words. Insert legal break opportunities for PDF layout.
 const segmenter = new Intl.Segmenter("th", { granularity: "word" });
 function pdfText(s: string): Content[] {
-  const words = [...segmenter.segment(s)].flatMap(({ segment }) =>
+  // Decompose Thai SARA AM before shaping so PDF text extraction does not duplicate SARA AA.
+  const words = [
+    ...segmenter.segment(s.replaceAll("ำ", "\u0e4d\u0e32")),
+  ].flatMap(({ segment }) =>
     segment.length > 28 && /^[\w/-]+$/.test(segment)
       ? segment.match(/.{1,24}/g)!
       : [segment],
