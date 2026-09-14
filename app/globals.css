@@ -4573,8 +4573,10 @@ table caption {
 
 /* General-user portal: simple navigation and a certificate-first search. */
 .ovec-masthead {
-  background: linear-gradient(160deg, #03295b, #075eae 45%, #a1d5ff);
-  border-bottom: 3px solid var(--sky);
+  width: 100%;
+  max-width: 1200px;
+  margin-inline: auto;
+  background: white;
 }
 .ovec-masthead img {
   display: block;
