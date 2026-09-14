@@ -4578,9 +4578,10 @@ table caption {
 }
 .ovec-masthead img {
   display: block;
-  width: 100%;
-  max-width: 1200px;
+  width: auto;
+  max-width: 100%;
   height: auto;
+  max-height: 360px;
   margin: 0 auto;
 }
 .learner-portal {
