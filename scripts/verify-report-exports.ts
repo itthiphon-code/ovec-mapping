@@ -39,8 +39,8 @@ const sources = await loadReportSources(
   },
 );
 const fonts = {
-  regular: readFileSync("public/fonts/Sarabun-Regular.ttf"),
-  bold: readFileSync("public/fonts/Sarabun-Bold.ttf"),
+  regular: readFileSync("public/fonts/THSarabunNew-Regular.ttf"),
+  bold: readFileSync("public/fonts/THSarabunNew-Bold.ttf"),
 };
 const base = {
   file,

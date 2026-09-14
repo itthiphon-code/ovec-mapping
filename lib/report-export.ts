@@ -8,7 +8,7 @@ let fontsPromise: Promise<ReportFonts> | undefined;
 export function loadReportFonts(): Promise<ReportFonts> {
   return (fontsPromise ||= Promise.all(
     ["Regular", "Bold"].map(async (weight) => {
-      const res = await fetch(`/fonts/Sarabun-${weight}.ttf`);
+      const res = await fetch(`/fonts/THSarabunNew-${weight}.ttf`);
       if (!res.ok)
         throw new Error("โหลดแบบอักษรไม่สำเร็จ กรุณาลองดาวน์โหลดอีกครั้ง");
       const bytes = new Uint8Array(await res.arrayBuffer());
@@ -23,8 +23,51 @@ export function loadReportFonts(): Promise<ReportFonts> {
       throw error;
     }));
 }
+export const reportLayout = {
+  font: "TH Sarabun New",
+  bodySize: 16,
+  titleSize: 20,
+  // Physical margins in points: left 3 cm, top 2.5 cm, right/bottom 2 cm.
+  margins: [85.04, 70.87, 56.69, 56.69] as [number, number, number, number],
+  marginTwips: { left: 1701, top: 1417, right: 1134, bottom: 1134 },
+};
+const thaiNumber = (n: number) =>
+  String(n).replace(/\d/g, (d) => "๐๑๒๓๔๕๖๗๘๙"[Number(d)]);
 const dateLabel = (s: string) =>
-  new Date(s).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" });
+  new Date(s).toLocaleDateString("th-TH-u-nu-thai", {
+    timeZone: "Asia/Bangkok",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+const blank = "........................................................";
+function officialLines(report: TransferReport) {
+  const o = report.official || {};
+  return [
+    `สถานศึกษา / หน่วยงาน  ${o.organization?.trim() || blank}`,
+    `งาน / ฝ่าย  ${o.department?.trim() || blank}`,
+    `เลขที่หนังสืออ้างอิง  ${o.referenceNumber?.trim() || blank}`,
+    `วันที่จัดทำรายงาน  ${dateLabel(report.generatedAt)}`,
+  ];
+}
+function signatureLines(report: TransferReport, reviewer = false) {
+  const o = report.official || {};
+  return [
+    `ลงชื่อ ${blank}`,
+    `(${reviewer ? blank : o.preparedBy?.trim() || blank})`,
+    `ตำแหน่ง ${reviewer ? blank : o.position?.trim() || blank}`,
+    reviewer ? "ผู้ตรวจสอบหลักฐาน" : "ผู้จัดทำรายงาน",
+    "วันที่ .......... เดือน ........................ พ.ศ. ..........",
+  ];
+}
+const signatureNotice =
+  "ช่องลงนามสำหรับจัดทำและตรวจสอบเอกสาร การอนุมัติเทียบโอนให้เป็นไปตามอำนาจและขั้นตอนของสถานศึกษา";
+// Allocate more width to source evidence than short credit values.
+export function reportColumnWeights(headers: string[]) {
+  if (headers.length === 3 && headers[1] === "ทฤษฎี ปฏิบัติ หน่วยกิต")
+    return [34, 17, 49];
+  return headers.map(() => 1);
+}
 // Thai has no spaces between words. Insert legal break opportunities for PDF layout.
 const segmenter = new Intl.Segmenter("th", { granularity: "word" });
 function pdfText(s: string): Content[] {
@@ -50,7 +93,7 @@ function keepSectionTogether(section: ReportSection) {
   return (
     !section.table &&
     paragraphs.length <= 5 &&
-    paragraphs.join("").length < 700 &&
+    paragraphs.join("").length < 450 &&
     paragraphs.reduce((n, p) => n + p.split("\n").length, 0) < 10
   );
 }
@@ -58,15 +101,20 @@ export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
   const content: Content[] = [
     {
       text: pdfText(report.title),
-      fontSize: 20,
+      fontSize: reportLayout.titleSize,
+      alignment: "center",
       bold: true,
-      color: "#111827",
+      color: "#000000",
       margin: [0, 0, 0, 10],
     },
+    ...officialLines(report).map((text): Content => ({
+      text: pdfText(text),
+      margin: [0, 0, 0, 3],
+    })),
     {
-      text: pdfText(report.status),
+      text: pdfText("สถานะเอกสาร  " + report.status),
       bold: true,
-      color: "#92400e",
+      color: "#000000",
       margin: [0, 0, 0, 10],
     },
     ...report.meta.map((text): Content => ({
@@ -76,17 +124,17 @@ export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
     {
       text: pdfText(reportDisclaimer),
       margin: [0, 10, 0, 8],
-      color: "#475569",
+      color: "#000000",
     },
   ];
-  for (const section of report.sections) {
+  for (const [sectionIndex, section] of report.sections.entries()) {
     const sectionStart = content.length;
     content.push({
-      text: pdfText(section.title),
-      headlineLevel: 1,
-      fontSize: 14,
+      text: pdfText(`${thaiNumber(sectionIndex + 1)}. ${section.title}`),
+      headlineLevel: section.table ? 2 : 1,
+      fontSize: reportLayout.bodySize,
       bold: true,
-      color: "#115e59",
+      color: "#000000",
       margin: [0, 14, 0, 7],
       ...(section.pageBreak ? { pageBreak: "before" as const } : {}),
     });
@@ -94,27 +142,32 @@ export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
       content.push({ text: pdfText(text), margin: [0, 0, 0, 6] });
     if (section.table) {
       if (!section.table.rows.length) {
-        content.push({ text: "ไม่มีรายการในส่วนนี้", color: "#64748b" });
+        content.push({ text: "ไม่มีรายการในส่วนนี้", color: "#000000" });
       } else {
         content.push({
-          fontSize: 10,
+          fontSize: reportLayout.bodySize,
           table: {
             headerRows: 1,
-            keepWithHeaderRows: 1,
+            // A source row can exceed a whole page. Keeping it with the
+            // header makes pdfmake discard its first page of text.
+            keepWithHeaderRows: 0,
             dontBreakRows: section.table.rows.every((row) =>
               row.every(
                 (cell) =>
                   cell.length <
-                    (section.table!.headers.length <= 3 ? 900 : 600) &&
+                    (section.table!.headers.length <= 3 ? 500 : 350) &&
                   cell.split("\n").length < 10,
               ),
             ),
-            widths: section.table.headers.map(() => "*"),
+            widths: reportColumnWeights(section.table.headers).map(
+              (weight, _i, all) =>
+                `${(100 * weight) / all.reduce((a, b) => a + b, 0)}%`,
+            ),
             body: [
               section.table.headers.map((text) => ({
                 text: pdfText(text),
                 bold: true,
-                fillColor: "#e8f3f0",
+                fillColor: "#f2f2f2",
               })),
               ...section.table.rows.map((row) =>
                 row.map((text) => ({ text: pdfText(text || "ยังไม่ระบุ") })),
@@ -124,12 +177,12 @@ export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
           layout: {
             hLineWidth: () => 0.5,
             vLineWidth: () => 0.5,
-            hLineColor: () => "#cbd5e1",
-            vLineColor: () => "#cbd5e1",
-            paddingLeft: () => 7,
-            paddingRight: () => 7,
-            paddingTop: () => 7,
-            paddingBottom: () => 7,
+            hLineColor: () => "#000000",
+            vLineColor: () => "#000000",
+            paddingLeft: () => 5,
+            paddingRight: () => 5,
+            paddingTop: () => 4,
+            paddingBottom: () => 4,
           },
         });
       }
@@ -138,6 +191,29 @@ export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
       content.push({ stack: content.splice(sectionStart), unbreakable: true });
     }
   }
+  content.push({
+    unbreakable: true,
+    margin: [0, 18, 0, 0],
+    stack: [
+      {
+        text: pdfText("การจัดทำและตรวจสอบเอกสาร"),
+        bold: true,
+        margin: [0, 0, 0, 6],
+      },
+      { text: pdfText(signatureNotice), margin: [0, 0, 0, 20] },
+      {
+        columns: [false, true].map((reviewer) => ({
+          width: "*",
+          alignment: "center" as const,
+          stack: signatureLines(report, reviewer).map((text) => ({
+            text: pdfText(text),
+            margin: [0, 0, 0, 3] as [number, number, number, number],
+          })),
+        })),
+        columnGap: 20,
+      },
+    ],
+  });
   return {
     info: {
       title: report.title,
@@ -147,33 +223,32 @@ export function pdfDefinition(report: TransferReport): TDocumentDefinitions {
     },
     pageSize: "A4",
     pageBreakBefore: (node, following, _next, previous) =>
-      node.headlineLevel === 1 && following.length === 0 && previous.length > 0,
+      (node.headlineLevel === 2 &&
+        (node.startPosition?.verticalRatio || 0) > 0.65) ||
+      (!!node.headlineLevel && following.length === 0 && previous.length > 0),
     pageOrientation: report.landscape ? "landscape" : "portrait",
-    pageMargins: [36, 52, 36, 55],
+    pageMargins: reportLayout.margins,
     defaultStyle: {
-      font: "Sarabun",
-      fontSize: 11,
-      lineHeight: 1.15,
-      color: "#1e293b",
+      font: reportLayout.font,
+      fontSize: reportLayout.bodySize,
+      lineHeight: 1,
+      color: "#000000",
     },
-    header: {
-      text: "OVEC Mapping  |  TPQI × อาชีวศึกษา",
-      font: "Sarabun",
-      fontSize: 9,
-      color: "#475569",
-      margin: [36, 22, 36, 0],
-    },
+    header: (page) =>
+      page > 1
+        ? {
+            text: `- ${thaiNumber(page)} -`,
+            alignment: "center",
+            fontSize: 14,
+            margin: [reportLayout.margins[0], 30, reportLayout.margins[2], 0],
+          }
+        : { text: "" },
     footer: (page, pages) => ({
-      columns: [
-        {
-          text: `จัดทำ ${dateLabel(report.generatedAt)} (เวลาไทย)`,
-          width: "*",
-        },
-        { text: `หน้า ${page} / ${pages}`, alignment: "right", width: "auto" },
-      ],
-      margin: [36, 20, 36, 0],
-      fontSize: 8,
-      color: "#64748b",
+      text: `OVEC Mapping   วันที่ ${dateLabel(report.generatedAt)}   หน้า ${thaiNumber(page)} จาก ${thaiNumber(pages)}`,
+      alignment: "center",
+      fontSize: 12,
+      margin: [reportLayout.margins[0], 15, reportLayout.margins[2], 0],
+      color: "#000000",
     }),
     content,
   };
@@ -187,15 +262,15 @@ export async function createReportPdf(
     import("buffer"),
   ]);
   const vfs = {
-    "Sarabun-Regular.ttf": Buffer.from(fonts.regular).toString("base64"),
-    "Sarabun-Bold.ttf": Buffer.from(fonts.bold).toString("base64"),
+    "THSarabunNew-Regular.ttf": Buffer.from(fonts.regular).toString("base64"),
+    "THSarabunNew-Bold.ttf": Buffer.from(fonts.bold).toString("base64"),
   };
   const definition = {
-    Sarabun: {
-      normal: "Sarabun-Regular.ttf",
-      bold: "Sarabun-Bold.ttf",
-      italics: "Sarabun-Regular.ttf",
-      bolditalics: "Sarabun-Bold.ttf",
+    [reportLayout.font]: {
+      normal: "THSarabunNew-Regular.ttf",
+      bold: "THSarabunNew-Bold.ttf",
+      italics: "THSarabunNew-Regular.ttf",
+      bolditalics: "THSarabunNew-Bold.ttf",
     },
   };
   return new Promise((resolve, reject) => {
@@ -220,22 +295,23 @@ export async function createReportWord(
         .flatMap((line, i) => [
           new d.TextRun({ text: line, bold, ...(i ? { break: 1 } : {}) }),
         ]),
-      spacing: { after: 100, line: 290 },
+      spacing: { after: 120, line: 240 },
       keepNext,
     });
   const children: (
     InstanceType<typeof d.Paragraph> | InstanceType<typeof d.Table>
   )[] = [
     new d.Paragraph({ text: report.title, heading: d.HeadingLevel.TITLE }),
+    ...officialLines(report).map((text) => para(text)),
     para(editableCopyNotice, true),
-    para(report.status, true),
+    para("สถานะเอกสาร  " + report.status, true),
     ...report.meta.map((text) => para(text)),
     para(reportDisclaimer),
   ];
-  for (const section of report.sections) {
+  for (const [sectionIndex, section] of report.sections.entries()) {
     children.push(
       new d.Paragraph({
-        text: section.title,
+        text: `${thaiNumber(sectionIndex + 1)}. ${section.title}`,
         heading: d.HeadingLevel.HEADING_1,
         pageBreakBefore: section.pageBreak,
       }),
@@ -258,27 +334,49 @@ export async function createReportWord(
           new d.Table({
             width: { size: 100, type: d.WidthType.PERCENTAGE },
             layout: d.TableLayoutType.FIXED,
-            columnWidths: section.table.headers.map(() =>
-              Math.floor(
-                (report.landscape ? 15398 : 10466) /
-                  section.table!.headers.length,
-              ),
+            columnWidths: reportColumnWeights(section.table.headers).map(
+              (weight, _i, all) =>
+                Math.floor(
+                  ((report.landscape ? 14003 : 9071) * weight) /
+                    all.reduce((a, b) => a + b, 0),
+                ),
+            ),
+            borders: Object.fromEntries(
+              [
+                "top",
+                "bottom",
+                "left",
+                "right",
+                "insideHorizontal",
+                "insideVertical",
+              ].map((side) => [
+                side,
+                { style: d.BorderStyle.SINGLE, size: 4, color: "000000" },
+              ]),
             ),
             rows: [section.table.headers, ...section.table.rows].map(
               (row, index) =>
                 new d.TableRow({
                   tableHeader: index === 0,
                   cantSplit: row.every(
-                    (cell) => cell.length < 600 && cell.split("\n").length < 10,
+                    (cell) => cell.length < 350 && cell.split("\n").length < 10,
                   ),
                   children: row.map(
-                    (text) =>
+                    (text, cellIndex) =>
                       new d.TableCell({
                         width: {
-                          size: 100 / row.length,
+                          size:
+                            (100 *
+                              reportColumnWeights(section.table!.headers)[
+                                cellIndex
+                              ]) /
+                            reportColumnWeights(section.table!.headers).reduce(
+                              (a, b) => a + b,
+                              0,
+                            ),
                           type: d.WidthType.PERCENTAGE,
                         },
-                        shading: index === 0 ? { fill: "E8F3F0" } : undefined,
+                        shading: index === 0 ? { fill: "F2F2F2" } : undefined,
                         margins: { top: 90, bottom: 90, left: 100, right: 100 },
                         children: [para(text || "ยังไม่ระบุ", index === 0)],
                       }),
@@ -289,23 +387,91 @@ export async function createReportWord(
         );
     }
   }
+  children.push(
+    new d.Paragraph({
+      text: "การจัดทำและตรวจสอบเอกสาร",
+      heading: d.HeadingLevel.HEADING_1,
+    }),
+    para(signatureNotice, false, true),
+  );
+  // A borderless table keeps the two signature blocks aligned and on one page.
+  children.push(
+    new d.Table({
+      width: { size: 100, type: d.WidthType.PERCENTAGE },
+      borders: Object.fromEntries(
+        [
+          "top",
+          "bottom",
+          "left",
+          "right",
+          "insideHorizontal",
+          "insideVertical",
+        ].map((side) => [
+          side,
+          { style: d.BorderStyle.NONE, size: 0, color: "FFFFFF" },
+        ]),
+      ),
+      rows: [
+        new d.TableRow({
+          cantSplit: true,
+          children: [false, true].map(
+            (reviewer) =>
+              new d.TableCell({
+                width: { size: 50, type: d.WidthType.PERCENTAGE },
+                margins: { top: 360, bottom: 0, left: 80, right: 80 },
+                children: signatureLines(report, reviewer).map(
+                  (text) =>
+                    new d.Paragraph({
+                      text,
+                      alignment: d.AlignmentType.CENTER,
+                      spacing: { after: 60, line: 240 },
+                    }),
+                ),
+              }),
+          ),
+        }),
+      ],
+    }),
+  );
   const document = new d.Document({
     creator: "OVEC Mapping",
     title: report.title,
     description: report.status,
-    fonts: [{ name: "Sarabun", data: Buffer.from(fonts.regular) }],
+    fonts: [{ name: reportLayout.font, data: Buffer.from(fonts.regular) }],
     styles: {
       default: {
         document: {
-          run: { font: "Sarabun", size: 22, sizeComplexScript: 22 },
-          paragraph: { spacing: { after: 100, line: 290 } },
+          run: {
+            font: reportLayout.font,
+            size: 32,
+            sizeComplexScript: 32,
+            color: "000000",
+            language: { value: "th-TH" },
+          },
+          paragraph: { spacing: { after: 120, line: 240 } },
         },
         title: {
-          run: { font: "Sarabun", size: 38, bold: true, color: "111827" },
-          paragraph: { spacing: { after: 200 }, keepNext: true },
+          run: {
+            font: reportLayout.font,
+            size: 40,
+            sizeComplexScript: 40,
+            bold: true,
+            color: "000000",
+          },
+          paragraph: {
+            alignment: d.AlignmentType.CENTER,
+            spacing: { after: 200 },
+            keepNext: true,
+          },
         },
         heading1: {
-          run: { font: "Sarabun", size: 28, bold: true, color: "115E59" },
+          run: {
+            font: reportLayout.font,
+            size: 32,
+            sizeComplexScript: 32,
+            bold: true,
+            color: "000000",
+          },
           paragraph: { spacing: { before: 220, after: 120 }, keepNext: true },
         },
       },
@@ -321,23 +487,19 @@ export async function createReportWord(
                 ? d.PageOrientation.LANDSCAPE
                 : d.PageOrientation.PORTRAIT,
             },
-            margin: { top: 900, bottom: 900, left: 720, right: 720 },
+            margin: { ...reportLayout.marginTwips, header: 567, footer: 567 },
           },
-        },
-        headers: {
-          default: new d.Header({
-            children: [para("OVEC Mapping | TPQI × อาชีวศึกษา")],
-          }),
         },
         footers: {
           default: new d.Footer({
             children: [
               new d.Paragraph({
-                alignment: d.AlignmentType.RIGHT,
+                alignment: d.AlignmentType.CENTER,
                 children: [
                   new d.TextRun({
-                    text: `จัดทำ ${dateLabel(report.generatedAt)} | หน้า `,
-                    size: 16,
+                    text: `OVEC Mapping   วันที่ ${dateLabel(report.generatedAt)}   หน้า `,
+                    size: 24,
+                    sizeComplexScript: 24,
                   }),
                   new d.TextRun({
                     children: [
@@ -345,7 +507,8 @@ export async function createReportWord(
                       " / ",
                       d.PageNumber.TOTAL_PAGES,
                     ],
-                    size: 16,
+                    size: 24,
+                    sizeComplexScript: 24,
                   }),
                 ],
               }),

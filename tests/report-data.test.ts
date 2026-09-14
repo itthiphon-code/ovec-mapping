@@ -5,7 +5,11 @@ import {
   createMappingReport,
   editableCopyNotice,
 } from "../lib/report-data";
-import { createReportWord, pdfDefinition } from "../lib/report-export";
+import {
+  createReportWord,
+  pdfDefinition,
+  reportLayout,
+} from "../lib/report-export";
 import {
   certificateResult,
   type CertificateFile,
@@ -183,13 +187,19 @@ test("review report explicitly marks stale review revisions and hashes", () => {
 });
 test("Word exporter produces genuine OOXML, escaped text, embedded font and editable-copy notice", async () => {
   const report = cert();
+  report.official = {
+    organization: "วิทยาลัยตัวอย่าง <ทดสอบ>",
+    preparedBy: "ผู้จัดทำทดสอบ",
+    referenceNumber: "ศธ 0000/ทดสอบ",
+  };
+
   report.sections.push({
     title: "ทดสอบ XML",
     paragraphs: ['<script>&"เนื้อหา"</script>'],
   });
   const blob = await createReportWord(report, {
-    regular: readFileSync("public/fonts/Sarabun-Regular.ttf"),
-    bold: readFileSync("public/fonts/Sarabun-Bold.ttf"),
+    regular: readFileSync("public/fonts/THSarabunNew-Regular.ttf"),
+    bold: readFileSync("public/fonts/THSarabunNew-Bold.ttf"),
   });
   const data = new Uint8Array(await blob.arrayBuffer());
   assert.equal(data[0], 0x50);
@@ -210,6 +220,22 @@ test("Word exporter produces genuine OOXML, escaped text, embedded font and edit
     assert.ok(xml.includes(editableCopyNotice));
     assert.ok(xml.includes("&lt;script&gt;&amp;"));
     assert.ok(xml.includes("w:tblHeader"));
+    assert.ok(xml.includes("วิทยาลัยตัวอย่าง &lt;ทดสอบ&gt;"));
+    assert.ok(xml.includes("ผู้จัดทำทดสอบ"));
+    assert.ok(xml.includes("ผู้ตรวจสอบหลักฐาน"));
+    assert.ok(xml.includes('w:left="1701"'));
+    assert.ok(xml.includes('w:right="1134"'));
+    assert.ok(xml.includes('w:top="1417"'));
+    assert.ok(xml.includes('w:orient="landscape"'));
+    const styles = execFileSync(
+      "unzip",
+      ["-p", `${dir}/test.docx`, "word/styles.xml"],
+      { encoding: "utf8" },
+    );
+    assert.ok(styles.includes('w:sz w:val="32"'));
+    assert.ok(styles.includes('w:szCs w:val="32"'));
+    assert.ok(styles.includes('w:lang w:val="th-TH"'));
+    assert.ok(!styles.includes("115E59"));
     const fonts = execFileSync(
       "unzip",
       ["-p", `${dir}/test.docx`, "word/fontTable.xml"],
@@ -222,7 +248,9 @@ test("Word exporter produces genuine OOXML, escaped text, embedded font and edit
 });
 test("PDF layout preserves the disclaimer, Thai font and repeating table headers", () => {
   const definition = pdfDefinition(cert());
-  assert.equal(definition.defaultStyle?.font, "Sarabun");
+  assert.equal(definition.defaultStyle?.font, "TH Sarabun New");
+  assert.equal(definition.defaultStyle?.fontSize, 16);
+  assert.deepEqual(definition.pageMargins, reportLayout.margins);
   function extract(value: unknown): string {
     if (typeof value === "string") return value;
     if (Array.isArray(value)) return value.map(extract).join("");

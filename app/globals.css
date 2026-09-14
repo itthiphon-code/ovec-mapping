@@ -5723,6 +5723,37 @@ table caption {
 .report-download > small {
   color: #525a64;
 }
+.report-official-details {
+  width: min(100%, 660px);
+  padding: 12px;
+  border: 1px solid #bdd5eb;
+  border-radius: 10px;
+  background: #f5faff;
+}
+.report-official-details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.report-official-details p {
+  font-size: 14px;
+  margin: 10px 0;
+}
+.report-official-details fieldset {
+  border: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 10px;
+}
+.report-official-details label {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+.report-official-details input {
+  width: 100%;
+  min-width: 0;
+}
 @media (max-width: 600px) {
   .report-export-options {
     align-items: stretch;

@@ -24,6 +24,15 @@ export type TransferReport = {
   status: string;
   meta: string[];
   sections: ReportSection[];
+  official?: OfficialReportDetails;
+};
+// User-entered print details are not verified institutional identity or approval.
+export type OfficialReportDetails = {
+  organization?: string;
+  department?: string;
+  referenceNumber?: string;
+  preparedBy?: string;
+  position?: string;
 };
 export const reportDisclaimer =
   "เอกสารนี้ใช้ประกอบการพิจารณา ไม่ใช่คำตัดสินเทียบโอนหน่วยกิตหรือใบรับรองคุณวุฒิของบุคคล ต้องตรวจใบรับรอง หลักฐาน และนโยบายสถานศึกษาก่อนพิจารณาเทียบโอน";

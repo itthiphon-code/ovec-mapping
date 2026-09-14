@@ -18,7 +18,7 @@
 - `lib/report-data.ts`: สร้างข้อมูลรายงานจากผลเทียบจริง โดยไม่ส่งต่อคะแนนไปยังแบบรายงานผู้ใช้ทั่วไป
 - `lib/report-export.ts`: สร้าง PDF/OOXML ภายในเครื่องผู้ใช้ โหลดตัวสร้างไฟล์เมื่อกดดาวน์โหลดเท่านั้น ไม่ส่งข้อมูลไปบริการแปลงไฟล์ภายนอก
 - `components/report-download.tsx`: ปุ่ม สถานะระหว่างจัดทำ และการลองใหม่เมื่อเกิดข้อผิดพลาด
-- `public/fonts/`: Sarabun Regular/Bold พร้อมใบอนุญาต OFL จาก [Google Fonts](https://github.com/google/fonts/tree/main/ofl/sarabun) ฝังฟอนต์ใน PDF และฝัง Regular ใน DOCX โปรแกรม Word ที่ไม่ใช้ฟอนต์ฝังอาจจัดหน้าแตกต่างจาก PDF
+- `public/fonts/`: ฟอนต์และใบอนุญาตสำหรับสร้างเอกสาร ดูหัวข้อรูปแบบเอกสารราชการด้านล่าง ฟอนต์ Sarabun เดิมยังเก็บไว้สำหรับความเข้ากันได้
 - `npm run check`: ตรวจชนิดข้อมูล lint การทดสอบ และ build
 - `node --import tsx scripts/verify-report-exports.ts`: สร้างไฟล์ตรวจรูปแบบใน `tmp/report-qa/` จากชุดข้อมูลมาตรฐาน 151 และ fixture เจ้าหน้าที่ที่ระบุว่าเป็นข้อมูลทดสอบ ไม่เขียนฐานข้อมูลจริง
 
@@ -33,3 +33,20 @@ The detailed report loads each course's original description, competencies, and 
 The existing computed dataset matches learning outcomes and competencies. Description text has no independently computed sentence matches in that dataset. Its crosswalk row therefore shows only selected UoCs explicitly referenced by the course, labeled as documentary scope pending expert review. Without a direct reference, no unit match is invented. Missing or deduplicated dimensions remain visible with an explanation.
 
 `lib/course-crosswalk.ts` supplies both screen and export rows. Names resolve only within the selected qualification level and UoC. `lib/report-source-loader.ts` loads up to four sources concurrently and checks the course and department identities. A failed source request prevents an incomplete detailed report and permits retry. Scoring, ranking, and approval remain unchanged.
+
+## รูปแบบเอกสารราชการ (14 กันยายน 2569)
+
+จัดเป็น **รายงานและเอกสารแนบประกอบการพิจารณา** ใช้ร่วมกับหนังสือนำของสถานศึกษา ไม่สร้างเลขหนังสือ ตราครุฑ คำสั่งอนุมัติ หรือลายเซ็นผู้รับรองอัตโนมัติ
+
+- A4 ขอบซ้าย 3 ซม. ขวา 2 ซม. บน 2.5 ซม. ล่าง 2 ซม. ตารางเทียบรายละเอียดใช้แนวนอน
+- TH Sarabun New เนื้อหาและตาราง 16 พอยต์ หัวเรื่องกลางหน้า 20 พอยต์ ตัวหนาสีดำ ระยะบรรทัดปกติ ตารางเส้นดำและหัวตารางเทาอ่อนซ้ำเมื่อขึ้นหน้าใหม่
+- วันที่ภาษาไทย พ.ศ. เลขหัวข้อไทย เลขหน้าอัตโนมัติ คงรหัสมาตรฐาน รหัสวิชา URL และ SHA-256 เดิมเพื่อค้นกลับได้
+- เปิด **ข้อมูลประกอบเอกสารราชการ** เหนือปุ่มดาวน์โหลด เพื่อกรอกสถานศึกษา งาน/ฝ่าย เลขหนังสืออ้างอิง ชื่อผู้จัดทำ และตำแหน่ง ช่องว่างพิมพ์เป็นจุดสำหรับกรอกภายหลัง ข้อมูลนี้อยู่เฉพาะหน้าเว็บและไฟล์ดาวน์โหลด ไม่บันทึกในฐานข้อมูล
+- ส่วนลงนามท้ายรายงานแยกผู้จัดทำกับผู้ตรวจสอบหลักฐาน โดยคงสถานะงานและเงื่อนไขการอนุมัติเดิม การกรอกชื่อไม่ใช่ลายเซ็นอิเล็กทรอนิกส์
+- PDF ฝัง Regular/Bold ของ TH Sarabun New; Word ฝัง Regular และกำหนดตัวหนา โปรแกรมอ่านที่ไม่รองรับฟอนต์ฝังควรติดตั้ง TH Sarabun New การแบ่งหน้าอาจต่างกันระหว่างโปรแกรม
+
+แนวทางระยะขอบ แบบอักษร และระยะบรรทัดอ้างอิง [คู่มือการปฏิบัติงานธุรการและงานสารบรรณ อบต.หนองเดิ่น บทที่ 3 การพิมพ์หนังสือราชการ](https://nongdoen.go.th/customers/content/download/240125/0ec0024c.pdf) การจัดหัวรายงานและช่องลงนามเป็นแบบของระบบสำหรับเอกสารแนบ มิใช่การอ้างว่าเป็นแบบบันทึกข้อความตามระเบียบทุกประการ
+
+ฟอนต์รุ่น TH Sarabun New ของ SIPA ใช้ไฟล์เดิมไม่ดัดแปลง ดู `public/fonts/THSarabunNew-LICENSE.txt` (ข้อความสิทธิจากฟอนต์ รวม font exception) และ `THSarabunNew-GPL-2.0.txt`; [ประกาศเผยแพร่ฟอนต์](https://www.f0nt.com/release/th-sarabun-new/)
+
+การตรวจ Word ด้วยตัวเรนเดอร์ที่ใช้ Fontconfig ให้กำหนด `FONTCONFIG_FILE` ไปยังไฟล์ที่มี `<dir>` ของ `public/fonts` แล้วรัน `render_docx.py --emit_pdf` ตรวจทุกหน้าและข้อความเทียบกับ JSON ตัวอย่าง ตรวจทั้งข้อมูลว่างและชื่อผู้จัดทำที่กรอกแล้ว
