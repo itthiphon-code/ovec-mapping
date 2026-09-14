@@ -15,12 +15,17 @@ export async function generateMetadata(): Promise<Metadata> {
       description: "ระบบเทียบเคียง TPQI กับรายวิชาอาชีวศึกษา",
       type: "website",
       images: [
-        { url: `${base}/og.png?v=ovec-mapping`, width: 1536, height: 1024 },
+        {
+          url: `${base}/images/ovec-mapping-header.png`,
+          width: 1672,
+          height: 941,
+          alt: "OVEC Mapping เชื่อมโยงมาตรฐานอาชีพสู่รายวิชา",
+        },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      images: [`${base}/og.png?v=ovec-mapping`],
+      images: [`${base}/images/ovec-mapping-header.png`],
     },
     robots: { index: false, follow: false },
   };

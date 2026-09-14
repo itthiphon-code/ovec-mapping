@@ -1,6 +1,7 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Compass,
@@ -17,7 +18,6 @@ import {
   CircleHelp,
   ArrowUpRight,
   Check,
-  GraduationCap,
 } from "lucide-react";
 import type { User } from "@/lib/types";
 
@@ -42,6 +42,18 @@ export function LearnerPortal({
       <a href="#main-content" className="skip-link">
         ข้ามไปเนื้อหาหลัก
       </a>
+      {pathname === "/" && (
+        <div className="ovec-masthead no-print">
+          <Image
+            src="/images/ovec-mapping-header.png"
+            alt="OVEC Mapping เชื่อมโยงมาตรฐานอาชีพสู่รายวิชา เชื่อมหน่วยสมรรถนะ ผลลัพธ์การเรียนรู้ สมรรถนะรายวิชา และเกณฑ์การปฏิบัติงาน"
+            width={1672}
+            height={941}
+            priority
+            unoptimized
+          />
+        </div>
+      )}
       <header className="learner-header no-print">
         <div className="learner-header-inner">
           <Link href="/" className="brand">
@@ -444,16 +456,14 @@ export function LearnerHelpPage() {
 
 export function LearnerSearchIntro() {
   return (
-    <section className="learner-hero">
+    <section className="learner-hero learner-hero-with-banner">
       <div>
         <span className="learner-kicker">
           <span />
           ใบรับรองของคุณ อาจต่อยอดการเรียนได้
         </span>
         <h1>
-          ค้นพบรายวิชาที่ไปต่อได้
-          <br />
-          ด้วย<span>ใบรับรองที่คุณมี</span>
+          ค้นหารายวิชาที่เทียบได้จาก<span>ใบรับรองของคุณ</span>
         </h1>
         <p>
           ค้นความเชื่อมโยงของใบรับรอง TPQI กับรายวิชา ปวช. และ ปวส.
@@ -475,26 +485,18 @@ export function LearnerSearchIntro() {
           </span>
         </div>
       </div>
-      <div className="learner-hero-art" aria-hidden="true">
-        <div className="learner-orbit" />
-        <div className="learner-art-certificate">
-          <span>YOUR ACHIEVEMENT</span>
-          <FileCheck2 size={43} />
-          <strong>ใบรับรองของคุณ</strong>
-          <div />
-          <div />
-          <small>คุณวุฒิ · ระดับ · หน่วยที่สอบผ่าน</small>
-        </div>
-        <div className="learner-art-course">
-          <GraduationCap size={30} />
-          <div>
-            <strong>รายวิชาที่เกี่ยวข้อง</strong>
-            <span>ค้นหา · เตรียมเอกสาร · ยื่นคำร้อง</span>
-          </div>
-        </div>
-        <span className="learner-art-link">
-          <ArrowRight size={26} />
-        </span>
+      <div className="learner-banner-actions no-print">
+        <a className="button primary" href="#certificate-search">
+          <Search size={18} /> เริ่มค้นหารายวิชา
+        </a>
+        <a
+          className="text-link"
+          href="/images/ovec-mapping-header.png"
+          target="_blank"
+          rel="noreferrer"
+        >
+          เปิดภาพหัวเว็บขนาดเต็ม <ArrowUpRight size={15} />
+        </a>
       </div>
     </section>
   );

@@ -62,6 +62,7 @@ export function LearnerSearch() {
     <>
       <LearnerSearchIntro />
       <section
+        id="certificate-search"
         className="learner-search-panel panel"
         aria-labelledby="learner-search-title"
       >

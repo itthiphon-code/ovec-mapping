@@ -1,22 +1,23 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;750;800&family=Noto+Sans+Thai:wght@400;450;500;550;600;650;700;750&family=Sarabun:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 :root {
-  --bg: #f4f8ff;
+  --bg: #f2f8ff;
   --surface: #ffffff;
-  --ink: #17345b;
-  --muted: #526883;
-  --line: #dce7f5;
-  --primary: #1d4ed8;
-  --primary-dark: #1e40af;
-  --blue: #2563eb;
+  --ink: #082e59;
+  --muted: #4e6684;
+  --line: #d2e4f7;
+  --primary: #075eae;
+  --primary-dark: #053c7a;
+  --blue: #0873c9;
+  --navy: #03295b;
   --radius: 18px;
   --shadow: 0 4px 6px -4px #203b6120, 0 10px 30px -16px #203b6123;
   font-family: "Inter", "Noto Sans Thai", sans-serif;
   color: var(--ink);
   background: var(--bg);
   font-synthesis: none;
-  --sky: #38bdf8;
-  --sky-soft: #eff8ff;
+  --sky: #34b9ff;
+  --sky-soft: #eaf6ff;
 }
 * {
   box-sizing: border-box;
@@ -4571,6 +4572,17 @@ table caption {
 }
 
 /* General-user portal: simple navigation and a certificate-first search. */
+.ovec-masthead {
+  background: linear-gradient(160deg, #03295b, #075eae 45%, #a1d5ff);
+  border-bottom: 3px solid var(--sky);
+}
+.ovec-masthead img {
+  display: block;
+  width: 100%;
+  max-width: 1200px;
+  height: auto;
+  margin: 0 auto;
+}
 .learner-portal {
   background: var(--bg);
   min-height: 100vh;
@@ -4578,8 +4590,10 @@ table caption {
   color: var(--ink);
 }
 .learner-header {
-  background: #ffffffed;
-  border-bottom: 1px solid #e0e6ed;
+  background: linear-gradient(110deg, var(--navy), #064a88);
+  color: white;
+  border-bottom: 1px solid #278bc4;
+  box-shadow: 0 6px 24px -16px #03295b99;
   position: sticky;
   top: 0;
   z-index: 40;
@@ -4597,10 +4611,12 @@ table caption {
 }
 .learner-header .brand {
   flex-shrink: 0;
+  color: white;
 }
 .learner-header .brand small {
   font-size: 10px;
   margin-top: 3px;
+  color: #c5e4ff;
 }
 .learner-header nav {
   display: flex;
@@ -4613,12 +4629,24 @@ table caption {
   font-weight: 550;
   padding: 10px 0;
   border-bottom: 2px solid transparent;
-  color: #5c7180;
+  color: #d6ebff;
   white-space: nowrap;
 }
 .learner-header nav a[aria-current="page"] {
-  color: #083c7f;
-  border-color: #083c7f;
+  color: white;
+  border-color: var(--sky);
+}
+.learner-header nav a:hover {
+  color: white;
+  border-color: #92d9ff;
+}
+.learner-header .learner-menu {
+  color: white;
+  background: transparent;
+  border-color: #7bb5e2;
+}
+.learner-header :focus-visible {
+  outline-color: #a4e1ff;
 }
 .learner-account {
   flex-shrink: 0;
@@ -4679,6 +4707,35 @@ table caption {
   align-items: center;
   gap: 32px;
   padding: 20px 0 50px;
+}
+.learner-hero-with-banner {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0 0 28px;
+  gap: 24px;
+}
+.learner-hero-with-banner h1 {
+  font-size: clamp(24px, 2.5vw, 32px);
+}
+.learner-hero-with-banner .learner-kicker {
+  margin-bottom: 10px;
+}
+.learner-hero-with-banner p {
+  margin-top: 12px;
+}
+.learner-hero-with-banner .learner-hero-facts {
+  margin-top: 14px;
+}
+.learner-banner-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.learner-banner-actions .text-link {
+  font-size: 12px;
+}
+#certificate-search {
+  scroll-margin-top: 150px;
 }
 .learner-kicker {
   display: inline-flex;
@@ -5429,6 +5486,10 @@ table caption {
   }
   .learner-hero-art {
     display: none;
+  }
+  .learner-banner-actions {
+    align-items: flex-start;
+    margin-top: 20px;
   }
   .learner-hero h1 {
     font-size: 32px;
