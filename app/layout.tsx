@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       images: [
         {
-          url: `${base}/images/ovec-mapping-header-wide.png`,
+          url: `${base}/images/ovec-mapping-header-v2.png`,
           width: 1983,
           height: 793,
           alt: "OVEC Mapping เชื่อมโยงมาตรฐานอาชีพสู่รายวิชา",
@@ -25,7 +25,7 @@ export async function generateMetadata(): Promise<Metadata> {
     },
     twitter: {
       card: "summary_large_image",
-      images: [`${base}/images/ovec-mapping-header-wide.png`],
+      images: [`${base}/images/ovec-mapping-header-v2.png`],
     },
     robots: { index: false, follow: false },
   };

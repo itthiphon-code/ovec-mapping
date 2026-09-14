@@ -4579,14 +4579,7 @@ table caption {
 .ovec-masthead img {
   display: block;
   width: 100%;
-  height: 25vw;
-  object-fit: cover;
-  object-position: center;
-}
-@media (max-width: 850px) {
-  .ovec-masthead img {
-    height: auto;
-  }
+  height: auto;
 }
 .learner-portal {
   background: var(--bg);
