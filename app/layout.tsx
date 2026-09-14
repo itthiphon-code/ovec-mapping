@@ -16,16 +16,16 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       images: [
         {
-          url: `${base}/images/ovec-mapping-header-v3.png`,
-          width: 1983,
-          height: 793,
-          alt: "OVEC Mapping เชื่อมโยงมาตรฐานอาชีพสู่รายวิชา",
+          url: `${base}/images/ovec-official-seal.png`,
+          width: 2063,
+          height: 2065,
+          alt: "ตราสำนักงานคณะกรรมการการอาชีวศึกษา",
         },
       ],
     },
     twitter: {
-      card: "summary_large_image",
-      images: [`${base}/images/ovec-mapping-header-v3.png`],
+      card: "summary",
+      images: [`${base}/images/ovec-official-seal.png`],
     },
     robots: { index: false, follow: false },
   };

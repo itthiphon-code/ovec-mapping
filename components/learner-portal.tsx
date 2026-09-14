@@ -1,7 +1,7 @@
 "use client";
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import Image from "next/image";
+import { OvecMasthead } from "@/components/ovec-masthead";
 import { usePathname } from "next/navigation";
 import {
   Compass,
@@ -42,18 +42,7 @@ export function LearnerPortal({
       <a href="#main-content" className="skip-link">
         ข้ามไปเนื้อหาหลัก
       </a>
-      {pathname === "/" && (
-        <div className="ovec-masthead no-print">
-          <Image
-            src="/images/ovec-mapping-header-v3.png"
-            alt="OVEC Mapping เชื่อมโยงมาตรฐานอาชีพสู่รายวิชา เชื่อมหน่วยสมรรถนะ ผลลัพธ์การเรียนรู้ สมรรถนะรายวิชา และเกณฑ์การปฏิบัติงาน"
-            width={1983}
-            height={793}
-            priority
-            unoptimized
-          />
-        </div>
-      )}
+      {pathname === "/" && <OvecMasthead />}
       <header className="learner-header no-print">
         <div className="learner-header-inner">
           <Link href="/" className="brand">
@@ -491,7 +480,7 @@ export function LearnerSearchIntro() {
         </a>
         <a
           className="text-link"
-          href="/images/ovec-mapping-header-v3.png"
+          href="/header"
           target="_blank"
           rel="noreferrer"
         >

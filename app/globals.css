@@ -4573,18 +4573,28 @@ table caption {
 
 /* General-user portal: simple navigation and a certificate-first search. */
 .ovec-masthead {
+  position: relative;
   width: 100%;
   /* The 1983 x 793 source has blank bands: 37px above and 34px below. */
   aspect-ratio: 1983 / 722;
   overflow: hidden;
   background: var(--navy);
 }
-.ovec-masthead img {
+.ovec-masthead-art {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center 52.112676%;
+}
+.ovec-masthead-seal {
+  /* Cover the generated seal using the unchanged, authoritative image. */
+  position: absolute;
+  left: calc(100% * 56 / 1983);
+  top: calc(100% * 8 / 722);
+  width: calc(100% * 254 / 1983);
+  height: auto;
+  display: block;
 }
 .learner-portal {
   background: var(--bg);
