@@ -16,6 +16,7 @@ export const runtime = env as unknown as {
   ASSETS: Fetcher;
   DOCUMENTS: R2Bucket;
   ADMIN_EMAIL?: string;
+  AUTH_MODE?: "password";
   LOCAL_DEV_EMAIL?: string;
   LOCAL_TEST_KEY?: string;
 };

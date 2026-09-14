@@ -1,0 +1,41 @@
+name: ovec-mapping
+services:
+  app:
+    image: ${MAPPING_IMAGE:?Set MAPPING_IMAGE to a validated release tag}
+    container_name: ovec-mapping-app
+    restart: unless-stopped
+    init: true
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 1g
+    cpus: 0.75
+    pids_limit: 128
+    environment:
+      NODE_ENV: production
+      APP_ORIGIN: https://mapping.utc.ac.th
+      ADMIN_EMAIL: itp@utc.ac.th
+      MAPPING_DATA_DIR: /data
+      MAPPING_ASSETS_DIR: /app/dist/client
+      VINEXT_TRUSTED_HOSTS: mapping.utc.ac.th
+      VINEXT_TRUST_PROXY: "1"
+      HOST: 0.0.0.0
+      PORT: "3000"
+      TZ: Asia/Bangkok
+    volumes:
+      - ./shared:/data
+    networks:
+      proxy:
+        aliases: [ovec-mapping-app]
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+networks:
+  proxy:
+    external: true
+    name: nginx-proxy-manager_default

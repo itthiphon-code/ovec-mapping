@@ -2,6 +2,7 @@ import vinext from "vinext";
 import { defineConfig, loadEnv } from "vite";
 import hostingConfig from "./.openai/hosting.json";
 import { sites } from "./build/sites-vite-plugin";
+import { resolve } from "node:path";
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
   "00000000-0000-4000-8000-000000000000";
@@ -34,6 +35,17 @@ const localBindingConfig = {
 };
 
 export default defineConfig(async ({ command, mode }) => {
+  const nodeTarget = process.env.MAPPING_TARGET === "node";
+  if (nodeTarget) {
+    return {
+      resolve: {
+        alias: {
+          "cloudflare:workers": resolve("deployment/node-bindings.mjs"),
+        },
+      },
+      plugins: [vinext()],
+    };
+  }
   const localEnv = command === "serve" ? loadEnv(mode, process.cwd(), "") : {};
   // Keep Wrangler and Miniflare state project-local. These are non-secret tool
   // settings; application environment belongs in ignored `.env*` files.

@@ -30,9 +30,11 @@ const learnerNav = [
 export function LearnerPortal({
   user,
   children,
+  authMode,
 }: {
   user: User | null;
   children: ReactNode;
+  authMode?: string;
 }) {
   const pathname = usePathname(),
     [menu, setMenu] = useState(false);
@@ -86,10 +88,13 @@ export function LearnerPortal({
           </nav>
           <div className="learner-account">
             {user ? (
-              <Link href="/documents" className="button secondary small">
+              <><Link href="/documents" className="button secondary small">
                 <Upload size={16} />
                 เอกสารของฉัน
               </Link>
+              {/* Gateway authentication pages require a full navigation outside React routing. */}
+              {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+              {authMode === "password" && <a className="text-link" href="/auth/password">จัดการบัญชี</a>}</>
             ) : (
               <a
                 className="button primary small"

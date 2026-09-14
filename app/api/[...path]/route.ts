@@ -235,6 +235,7 @@ async function handle(
     if (resource === "me")
       return json({
         user,
+        authMode: runtime.AUTH_MODE || "sites",
         local:
           process.env.NODE_ENV !== "production" && !!runtime.LOCAL_DEV_EMAIL,
       });

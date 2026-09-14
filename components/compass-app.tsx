@@ -56,7 +56,7 @@ const nav = [
 export default function CompassApp() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const me = useResource<{ user: User | null; local: boolean }>("me");
+  const me = useResource<{ user: User | null; local: boolean; authMode?: string }>("me");
   const user = me.data?.user || null;
   const parts = pathname.split("/").filter(Boolean);
   const learnerPage = [
@@ -123,7 +123,7 @@ export default function CompassApp() {
   else view = <Guide />;
   if (learnerPage)
     return (
-      <LearnerPortal user={user}>
+      <LearnerPortal user={user} authMode={me.data?.authMode}>
         {me.error && <ErrorBox message={`ตรวจสิทธิ์ไม่สำเร็จ: ${me.error}`} />}
         {view}
       </LearnerPortal>
@@ -231,6 +231,11 @@ export default function CompassApp() {
                     {roleLabels[user.role]}
                     {me.data?.local ? " · เครื่องนี้" : ""}
                   </small>
+                  {me.data?.authMode === "password" && (
+                    // Gateway authentication pages require a full navigation outside React routing.
+                    // eslint-disable-next-line @next/next/no-html-link-for-pages
+                    <small><a href="/auth/password">จัดการบัญชี</a> · <a href="/auth/logout">ออกจากระบบ</a></small>
+                  )}
                 </span>
               </div>
             ) : (

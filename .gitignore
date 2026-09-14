@@ -14,3 +14,5 @@ docs/evidence/**/*.pdf
 .vinext/
 
 public/embedding-runtime/
+.mapping-data/
+deployment/release/

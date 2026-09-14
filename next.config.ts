@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  ...(process.env.MAPPING_TARGET === "node" ? { output: "standalone" } : {}),
 };
 
 export default nextConfig;
