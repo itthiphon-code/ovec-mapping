@@ -4574,14 +4574,17 @@ table caption {
 /* General-user portal: simple navigation and a certificate-first search. */
 .ovec-masthead {
   width: 100%;
-  max-width: 1200px;
-  margin-inline: auto;
-  background: white;
+  /* The 1983 x 793 source has blank bands: 37px above and 34px below. */
+  aspect-ratio: 1983 / 722;
+  overflow: hidden;
+  background: var(--navy);
 }
 .ovec-masthead img {
   display: block;
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 52.112676%;
 }
 .learner-portal {
   background: var(--bg);
