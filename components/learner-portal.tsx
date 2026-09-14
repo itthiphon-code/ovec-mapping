@@ -45,7 +45,7 @@ export function LearnerPortal({
       {pathname === "/" && (
         <div className="ovec-masthead no-print">
           <Image
-            src="/images/ovec-mapping-header-v2.png"
+            src="/images/ovec-mapping-header-v3.png"
             alt="OVEC Mapping เชื่อมโยงมาตรฐานอาชีพสู่รายวิชา เชื่อมหน่วยสมรรถนะ ผลลัพธ์การเรียนรู้ สมรรถนะรายวิชา และเกณฑ์การปฏิบัติงาน"
             width={1983}
             height={793}
@@ -491,7 +491,7 @@ export function LearnerSearchIntro() {
         </a>
         <a
           className="text-link"
-          href="/images/ovec-mapping-header-v2.png"
+          href="/images/ovec-mapping-header-v3.png"
           target="_blank"
           rel="noreferrer"
         >
