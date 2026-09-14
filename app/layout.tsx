@@ -16,16 +16,16 @@ export async function generateMetadata(): Promise<Metadata> {
       type: "website",
       images: [
         {
-          url: `${base}/images/ovec-mapping-header.png`,
-          width: 1672,
-          height: 941,
+          url: `${base}/images/ovec-mapping-header-wide.png`,
+          width: 1983,
+          height: 793,
           alt: "OVEC Mapping เชื่อมโยงมาตรฐานอาชีพสู่รายวิชา",
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      images: [`${base}/images/ovec-mapping-header.png`],
+      images: [`${base}/images/ovec-mapping-header-wide.png`],
     },
     robots: { index: false, follow: false },
   };
